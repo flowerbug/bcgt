@@ -34,6 +34,7 @@ When Done type in D and the transactions are printed to the screen or you can ge
 
 Here is the current help screen from running the command:
 
+```
 $python bcgt.py --help ledger.bc
 
 
@@ -85,6 +86,7 @@ options:
                         CSV filename to write out the postings table to.
   -o OUTPUT, --output OUTPUT
                         CSV filename to write out the final joined table to.
+```
 
 
 # Lot Order, Different Accounts, Multiple Lots, Fees, Partial Lots, All Lots
