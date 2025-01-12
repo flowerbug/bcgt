@@ -94,9 +94,23 @@ The default Sell lot order is LIFO, but there is the switch -f to change that to
 If you sell more shares than are in the first lot available this script will keep selling lots in the preferred order to fit your desires.  The fee is split proportionately among the different lots, but it may not be accurate in reflecting what the stock brokerage does, so it may really be best to sell only within one lot at a time (at least until I can find out what the formula actually is).  This code will also sell a part of a lot.  Or if you want to sell all of your shares you can put in a big number and it will sell all your lots and then stop when they're gone.
 
 
+# About Lot labels
+
+You can change it to whatever you like, but I use a combination of the stock symbol, the date and time down to the second.  If you need finer resolution than that you could add microseconds or a random string of some sort.
+
+If you are generating Buy transactions around midnight the date will change.
+
+
 # For The Moment in This Initial Version
 
 I am not changing or adding to existing files at all.  To make actual changes reflect in what you see and can act upon in this script you have to generate the transaction, put it in your transaction files someplace and then rerun this script.  Yes, it is temporarily clunky, but that is the safe way to do things for the moment.  Instead I am appending to temporary files which then can be edited if needed before being added to the regular transaction files.
+
+
+# What Am I Running This On
+
+Debian GNU/Linux testing.
+
+Dependencies: Python, autobean-format, beancount.
 
 
 # What about Split
