@@ -21,7 +21,7 @@ I edited export.py to provide a list of lots of stock currently held.  Enter com
 What it DOES NOT do is append transactions to your existing beancount files, but you could change the program to put the file in your existing beancount transactions directory so it would be scanned.
 
 
-#Two Short Examples
+# Two Short Examples
 
 It is a very simple command line interface if you are familiar with the export.py program I have currently kept all the existing options and just added a few more.
 
@@ -30,7 +30,7 @@ To Buy 10 shares of ABT at 112.00 type in "B 10 ABT 112.00" generate the beancou
 When Done type in D and the transactions are printed to the screen or you can get them from the file.
 
 
-#Help Screen:
+# Help Screen:
 
 Here is the current help screen from running the command:
 
@@ -87,7 +87,7 @@ options:
                         CSV filename to write out the final joined table to.
 
 
-#Lot Order, Different Accounts, Multiple Lots, Fees, Partial Lots, All Lots
+# Lot Order, Different Accounts, Multiple Lots, Fees, Partial Lots, All Lots
 
 The default Sell lot order is LIFO, but there is the switch -f to change that to FIFO.  The default account is a ROTH account but there is the switch -s to change that to REG.  All of these can be changed in the source code to fit your account preferences (along with the account to get funds from or to put funds into).
 
