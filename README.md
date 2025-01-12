@@ -4,7 +4,7 @@
 
 A Beancount Tool to Generate Beancount Transactions for Stock Buys, Sells, Splits[*].
 
-Bcgt is adapted from the export.py program in beangrow written by Martin Blais, with the following:
+Bcgt is adapted from the export.py program referenced from beangrow which was available in earlier beancount versions, written by Martin Blais, with the following:
 
 Copyright: "Copyright (C) 2018  Martin Blais"
 License: "GNU GPLv2"
