@@ -112,6 +112,8 @@ Debian GNU/Linux testing.
 
 Dependencies: Python, autobean-format, beancount.
 
+I also set up virtual environments in python to run beancount so the different dependencies don't clash with my existing python system versions.
+
 
 # What about Split
 
