@@ -1,0 +1,30 @@
+option "title" "Test Ledger"
+
+option "operating_currency" "USD"
+
+option "inferred_tolerance_default" "*:0.000001"
+
+option "account_rounding" "Equity:RoundingError"
+
+2024-12-01 open Equity:RoundingError
+
+option "render_commas" "TRUE"
+
+include "./commodities.bc"
+
+option "insert_pythonpath" "True"
+
+plugin "beancount.plugins.auto_accounts"
+
+
+; stock brokers
+
+; if you want to look at previous ones you can use these but
+; they are not complete.  It is easier to use the combined one
+; below these (of all four institutions)
+;
+;
+include "./tree/Assets/SB/SCH/*.bc"
+
+; prices
+include "./prices.bc"

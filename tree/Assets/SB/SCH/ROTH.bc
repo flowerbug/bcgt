@@ -1,0 +1,12 @@
+2024-12-30 * "Bought 10 ABT @ 114.00  LIFO  (LOT ABT-2024-12-30-094050)"
+  Assets:SB:SCH:ROTH:ABT                                 10 ABT {114.00 USD, 2024-12-30, "ABT-2024-12-30-094050"}
+  Assets:SB:SCH:ROTH:SCHONEMM                     -1,140.00 USD
+
+2025-01-08 * "Bought 10 VST @ 155.25  LIFO  (LOT VST-2025-01-08-101555)"
+  Assets:SB:SCH:ROTH:VST                                 10 VST {155.25 USD, 2025-01-08, "VST-2025-01-08-101555"}
+  Assets:SB:SCH:ROTH:SCHONEMM                     -1,552.50 USD
+
+2025-01-08 * "Bought 10 VST @ 153.00  LIFO  (LOT VST-2025-01-08-102540)"
+  Assets:SB:SCH:ROTH:VST                                 10 VST {153.00 USD, 2025-01-08, "VST-2025-01-08-102540"}
+  Assets:SB:SCH:ROTH:SCHONEMM                     -1,530.00 USD
+
