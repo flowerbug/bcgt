@@ -97,3 +97,10 @@ If you sell more shares than are in the first lot available this script will kee
 # For The Moment in This Initial Version
 
 I am not changing or adding to existing files at all.  To make actual changes reflect in what you see and can act upon in this script you have to generate the transaction, put it in your transaction files someplace and then rerun this script.  Yes, it is temporarily clunky, but that is the safe way to do things for the moment.  Instead I am appending to temporary files which then can be edited if needed before being added to the regular transaction files.
+
+
+# What about Split
+
+[*] Split is not done yet.
+
+
