@@ -25,7 +25,7 @@ What it DOES NOT do is append transactions to your existing beancount files, but
 
 It is a very simple command line interface if you are familiar with the export.py program I have currently kept all the existing options and just added a few more.
 
-To Buy 10 shares of ABT at 112.00 type in "B 10 ABT 112.00" generate the beancount transaction which will then get put into a temporary file.  To Sell you would type in "S 10 ABT 120.00 0.05" (the last number 0.05 is the fee the broker charges you which will be subtracted from your gains or added to your losses).
+To Buy 10 shares of ABT at 112.00 type in "B 10 ABT 112.00" to generate the beancount transaction which will then get put into a temporary file.  To Sell you would type in "S 10 ABT 120.00 0.05" (the last number 0.05 is the fee the broker charges you which will be subtracted from your gains or added to your losses).
 
 When Done type in D and the transactions are printed to the screen or you can get them from the file.
 
@@ -100,7 +100,7 @@ If you sell more shares than are in the first lot available this script will kee
 
 You can change it to whatever you like, but I use a combination of the stock symbol, the date and time down to the second.  If you need finer resolution than that you could add microseconds or a random string of some sort.
 
-If you are generating Buy transactions around midnight the date will change.
+If you are generating Buy transactions around midnight the date of the transaction and the lot label will change.
 
 
 # For The Moment in This Initial Version
