@@ -316,18 +316,19 @@ def main():
     #    append items to tmp_ngtfile
     #   when finished ngt_name will contain postprocessed
     #     transactions formatted with autobean-format
-    ngtfile_base = "trans-"+roth_or_reg.lower().replace(':','')
-    tmp_ngtfile_name = "/tmp/"+ngtfile_base+".tmp"
-    tmp_ngtfile = open(tmp_ngtfile_name, 'a')
+    bcgtfile_base = "trans-"+roth_or_reg.lower().replace(':','')
+    tmp_bcgtfile_name = "/tmp/"+bcgtfile_base+".tmp"
+    tmp_bcgtfile = open(tmp_bcgtfile_name, 'a')
     fix_tmp = "/tmp/fix_tmp"
     blankline_tmp = "/tmp/blankline_tmp"
     mk_bl_tmp = "echo > "+blankline_tmp
-    ngtfile_name = ngtfile_base+"-out.bc"
-    ngtfile = open(ngtfile_name, 'w')
-    postprocess = "autobean-format --indent=\'  \' --currency-column 60 --cost-column 60 --output-mode inplace --thousands-separator add "+tmp_ngtfile_name
-    fix_output = "cat "+tmp_ngtfile_name+" "+blankline_tmp+" > "+fix_tmp
-    move_output = "mv "+fix_tmp+" "+ngtfile_name
-    cleanup_tmpfiles = "rm "+tmp_ngtfile_name+" "+blankline_tmp
+    bcgtfile_name = bcgtfile_base+"-out.bc"
+    bcgtfile = open(bcgtfile_name, 'w')
+    postprocess = "autobean-format --indent=\'  \' --currency-column 60 --cost-column 60 --output-mode inplace --thousands-separator add "+tmp_bcgtfile_name
+    fix_output = "cat "+tmp_bcgtfile_name+" "+blankline_tmp+" > "+fix_tmp
+    move_output = "mv "+fix_tmp+" "+bcgtfile_name
+    cleanup_tmpfiles = "rm "+tmp_bcgtfile_name+" "+blankline_tmp
+
     # Load the file contents.
     entries, errors, options_map = loader.load_file(args.filename)
 
@@ -726,7 +727,7 @@ def main():
                 num = spl[1]
                 price = spl[3]
 
-                buy_shares (sym, num, price, main_currency, lotorder, today, tmp_ngtfile)
+                buy_shares (sym, num, price, main_currency, lotorder, today, tmp_bcgtfile)
 
             # Sell or Split
             elif command in ['S','X']:
@@ -754,7 +755,7 @@ def main():
                     amt_val = newmoneyfmt(price * num)
                     #print ("Amt : ", amt_val)
 
-                    sell_shares (slist, z, sym, num, price, main_currency, regfee, lotorder, today, tmp_ngtfile)
+                    sell_shares (slist, z, sym, num, price, main_currency, regfee, lotorder, today, tmp_bcgtfile)
 
                 # Split
                 elif command == 'X' and len(spl) == 5:
@@ -770,10 +771,10 @@ def main():
            print ("What?")
 
 
-    # post process any contents of tmp_ngtfile to get ngtfile
-    tmp_ngtfile.flush()
-    tmp_ngtfile.close()
-    #os.system ("cat "+tmp_ngtfile_name)
+    # post process any contents of tmp_bcgtfile to get bcgtfile
+    tmp_bcgtfile.flush()
+    tmp_bcgtfile.close()
+    #os.system ("cat "+tmp_bcgtfile_name)
     os.system (postprocess)
     os.system(mk_bl_tmp)
     os.system (fix_output)
@@ -781,7 +782,7 @@ def main():
     os.system (cleanup_tmpfiles)
     
     print ("OUTPUT -->")
-    os.system ("cat "+ngtfile_name)
+    os.system ("cat "+bcgtfile_name)
     print ("<--OUTPUT")
 
     # Export table if requested
