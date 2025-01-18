@@ -692,8 +692,9 @@ def main():
         #print (len(spl))
     
         # we need some input
-        if spl is None:
-           print ("\n\nNeed input")
+        if spl is None or spl == []:
+           print ("\n\nNeed correct input.")
+           continue
         else:
            spl[0] = spl[0][0]
 
