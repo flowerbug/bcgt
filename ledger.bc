@@ -18,12 +18,6 @@ plugin "beancount.plugins.auto_accounts"
 
 
 ; stock brokers
-
-; if you want to look at previous ones you can use these but
-; they are not complete.  It is easier to use the combined one
-; below these (of all four institutions)
-;
-;
 include "./tree/Assets/SB/SCH/*.bc"
 
 ; prices
