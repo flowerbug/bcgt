@@ -2,7 +2,7 @@
 """List Unsold Lots and Generate Buy, Sell and Split Transactions.
 
 The primary purpose of this script is to generate Buy, Sell and Split
-transactions.
+beancount transactions.
 
 The secondary purpose of this script is to:
 
@@ -313,8 +313,8 @@ def main():
         lotorder = 'FIFO'
 
     # temporary file for generated transactions
-    #    append items to tmp_ngtfile
-    #   when finished ngt_name will contain postprocessed
+    #    append items to tmp_bcgtfile
+    #   when finished bcgtfile_name will contain postprocessed
     #     transactions formatted with autobean-format
     bcgtfile_base = "trans-"+roth_or_reg.lower().replace(':','')
     tmp_bcgtfile_name = "/tmp/"+bcgtfile_base+".tmp"
