@@ -241,6 +241,7 @@ def write_table(table: Table, outfile: str):
         writer.writerow(table.header)
         writer.writerows(table.rows)
 
+
 def do_args():
     """Process all of the command arguments."""
     parser = argparse.ArgumentParser(description=__doc__.strip())
@@ -273,6 +274,221 @@ def do_args():
     return parser.parse_args()
 
 
+# I like to see the basis in a certain format
+
+# this is from the documentation of Decimal
+def moneyfmt(value, places=2, curr='', sep=',', dp='.',
+             pos='', neg='-', trailneg=''):
+    """Convert Decimal to a money formatted string.
+
+    places:  required number of places after the decimal point
+    curr:    optional currency symbol before the sign (may be blank)
+    sep:     optional grouping separator (comma, period, space, or blank)
+    dp:      decimal point indicator (comma or period)
+             only specify as blank when places is zero
+    pos:     optional sign for positive numbers: '+', space or blank
+    neg:     optional sign for negative numbers: '-', '(', space or blank
+    trailneg:optional trailing minus indicator:  '-', ')', space or blank
+
+    >>> d = Decimal('-1234567.8901')
+    >>> moneyfmt(d, curr='$')
+    '-$1,234,567.89'
+    >>> moneyfmt(d, places=0, sep='.', dp='', neg='', trailneg='-')
+    '1.234.568-'
+    >>> moneyfmt(d, curr='$', neg='(', trailneg=')')
+    '($1,234,567.89)'
+    >>> moneyfmt(Decimal(123456789), sep=' ')
+    '123 456 789.00'
+    >>> moneyfmt(Decimal('-0.02'), neg='<', trailneg='>')
+    '<0.02>'
+
+    """
+    q = Decimal(10) ** -places      # 2 places --> '0.01'
+    sign, digits, exp = value.quantize(q).as_tuple()
+    result = []
+    digits = list(map(str, digits))
+    build, next = result.append, digits.pop
+    if sign:
+        build(trailneg)
+    for i in range(places):
+        build(next() if digits else '0')
+    if places:
+        build(dp)
+    if not digits:
+        build('0')
+    i = 0
+    while digits:
+        build(next())
+        i += 1
+        if i == 3 and digits:
+            i = 0
+            build(sep)
+    build(curr)
+    build(neg if sign else pos)
+    return ''.join(reversed(result))
+
+
+# newmoneyfmt remove trailing zeros, except two
+def newmoneyfmt(value):
+    """Convert Decimal to a money formatted string with
+    at most two zeroes.
+    """
+
+    refsub = re.compile(r"([-+]?(\d{1,3}(,\d{3})+|\d+))(\.)?(\d\d)?(\d*$)")
+
+    mval = moneyfmt(value, places=14, sep=',')
+
+    #print (mval)
+    match = refsub.search(mval)
+    #print ("match ", match)
+    if match is not None:
+        #print ("match groups : ", match.groups())
+        if int(match.group(5)) == 0:
+            newmval = match.group(1)+'.'+match.group(5)
+        else:
+            newmval = match.group(1)+'.'+match.group(5)+match.group(6).rstrip('0')
+
+    return newmval
+
+
+# Buy shares
+def buy_shares(sym, shares_to_buy, price, currency,
+    order, btoday, asset_str, mm_str, tmpfile):
+    """Buy shares and tag this lot with the proper label.
+    """
+
+    today_str = '{:%Y-%m-%d}'.format(btoday)
+    time_str = '{:%H%M%S}'.format(btoday)
+    lot = sym+'-'+today_str+'-'+time_str
+    lotstr = '(LOT '+lot+')'
+    amt_val = newmoneyfmt((Decimal(-1) * Decimal(price) * Decimal(shares_to_buy)))
+    #print ("Amt : ", amt_val)
+    str1 = today_str+' * \"Bought '+shares_to_buy+' '+sym+' @ '+price+'  '+order+'  '+lotstr+'\"\n'
+    #print (str1)
+    str2 = '  '+asset_str+sym+'    '+shares_to_buy+' '+sym+' {'+price+' '+currency+', '+today_str+', "'+lot+'"}\n'
+    #print (str2)
+    str3 = '  '+mm_str+'    '+amt_val+' '+currency+"\n\n"
+    #print (str3)
+    print (str1, str2, str3, file=tmpfile)
+
+
+# Sell shares
+def sell_shares(list, pos, sym, shares_to_sell, price, currency, sregfee,
+    order, stoday, asset_str, expenses_str, equity_fees_str, income_str, mm_str, tmpfile):
+    """Sell shares where the order of lots is determined by how
+    the list is sorted (LIFO is the default, FIFO is the other
+    option available).  The only error is if the shares do not
+    exist.  You can sell all of the shares by specifying a number
+    of shares larger than you have.  I do not sell shares short so
+    I stop at zero in all cases.  When more than one lot of shares
+    are sold the regfee is distributed across the shares in
+    proportion to the sizes of the lots or partial lots sold.  With
+    rounding being involved if you want precise control of fees
+    and lots it is best to sell only each lot at a time and then the
+    broker tells you what the fees are for that lot and then put that
+    information into this program one lot at a time with the fee.
+
+    Profits and Losses are not classified as short or long term
+    yet.
+    """
+
+    find_pos = pos
+    end = len(list) - 1
+    x_sym = list[find_pos][3]
+    lot_count = 1
+    total_shares = list[find_pos][2]
+    this_lot_shares = list[find_pos][2]
+    while ((find_pos < end) and (x_sym == list[find_pos+1][3])):
+        lot_count += 1
+        find_pos += 1
+        total_shares += list[find_pos][2]
+    finish = find_pos
+
+    #print ("Pos : ", pos)
+    #print ("Finish : ", finish)
+    #print ("Lot Count : ", lot_count)
+    #print ("Total Shares : ", total_shares)
+
+    #print ("Sh_To_Sell : ", shares_to_sell)
+    if (shares_to_sell > total_shares):
+        print (" Selling all shares")
+        shares_to_sell = total_shares
+    elif (shares_to_sell > this_lot_shares):
+        print (" Selling more than one lot")
+    elif (shares_to_sell == this_lot_shares):
+        print (" Selling one lot")
+    else:
+        print (" Selling a part of the lot ")
+    whats_left = sregfee
+    #print ("sregfee : ", sregfee)
+    regfee_per_share = sregfee / shares_to_sell
+    #print ("FeePerSh : ", regfee_per_share, "\n")
+
+    sell_pos = pos
+    sold_count = 0
+    while ((sold_count < shares_to_sell) and (sell_pos <= finish)):
+        #print ("Sell Pos : ", sell_pos)
+        if (sold_count < shares_to_sell):
+            if ((shares_to_sell - sold_count) >= list[sell_pos][2]):
+                sell_these = list[sell_pos][2]
+            else:
+                sell_these = shares_to_sell - sold_count
+        else:
+            sold_count = shares_to_sell
+
+        #print ("\n\n", sell_pos, list[sell_pos])
+        lot_shares = list[sell_pos][2]
+        lot_date = list[sell_pos][6]
+        #print ("Lot_Shares  :", lot_shares)
+        #print ("These_Shares  :", sell_these)
+        this_regfee = Decimal(regfee_per_share * sell_these).quantize(Decimal('.01'), rounding=ROUND_HALF_EVEN)
+        #print ("This Regfee : ", this_regfee)
+        if (this_regfee > whats_left):
+            #print (" Remaining fee ignored : ", this_regfee - whats_left)
+            this_regfee = whats_left
+        whats_left -= this_regfee
+        #print ("Whats Left : ", whats_left)
+        basis_price = list[sell_pos][4]
+        #print ("Basis Price : ", basis_price)
+        basis_val = basis_price * sell_these
+        #print (" Basis Val  : ", newmoneyfmt(basis_val))
+        #print (" Sale Price : ", price, "\n")
+
+        sale_value = sell_these * price
+        #print (" Sale Value : ", sale_value, "\n")
+        sale_pnl = (sale_value - basis_val - this_regfee) * Decimal(-1)
+        stoday_str = '{:%Y-%m-%d}'.format(stoday)
+        lot = list[sell_pos][7]
+        lotstr = '(LOT '+lot+')'
+
+        lot_date_str = '{:%Y-%m-%d}'.format(lot_date)
+        str0 = stoday_str+' * \"Sold '+str(sell_these)+' '+sym+' @ '+str(price)+' RegFee '+newmoneyfmt(this_regfee)+'  '+order+'  '+lotstr+'\"\n'
+        #print ('"Sold', sell_these, sym, '@', price, "RegFee", this_regfee, order, lotstr+'"')
+        #print (str0)
+        str1 = '  basis: "'+newmoneyfmt(basis_val)+'" \n'
+        #print (str1)
+        str2 = '  '+asset_str+sym+'    '+str(sell_these * Decimal(-1))+' '+sym+' {'+str(basis_price)+' '+currency+', '+lot_date_str+', "'+lot+'"} @ '+str(price)+' '+currency+'\n'
+        #print (str2)
+        str3 = '  '+expenses_str+":"+sym+'    '+moneyfmt(Decimal(-1) * this_regfee)+' '+currency+'\n'
+        #print (str3)
+        str4 = '  '+equity_fees_str+'    '+moneyfmt(this_regfee)+' '+currency+'\n'
+        #print (str4)
+        str5 = '  '+income_str+sym+'    '+moneyfmt(sale_pnl)+' '+currency+'\n'
+        #print (str5)
+        str6 = '  '+mm_str+'    '+moneyfmt(sale_value - this_regfee)+' '+currency+"\n\n"
+        #print (str6)
+        print (str0, str1, str2, str3, str4, str5, str6, file=tmpfile)
+
+        sold_count += sell_these
+        #print (" lpos : ", sell_pos, "  Sell : ", sell_these)
+        #print (" lpos : ", sell_pos, "    Sold : ", sold_count)
+        #print (" lpos : ", sell_pos, "     Fee : ", this_regfee)
+        if (sold_count == shares_to_sell) and (whats_left != 0.00):
+            #print ("\n\nSome Fees not used : ", whats_left, "\n")
+            pass
+        sell_pos += 1
+
+
 def main():
 
     args = do_args()
@@ -291,8 +507,6 @@ def main():
     fees = "Fees:RegFees"
     mm_acct = "SCHONEMM"
 
-    minus_one = Decimal(-1)
-
     if args.switch_acct == True:
         print ("Using Regular (taxable) Account")
         roth_or_reg = "REG:"
@@ -307,7 +521,6 @@ def main():
 
     print ("\n  ",asset_str,"\n  ",income_str,"\n  ",expenses_str,"\n  ",equity_fees_str,"\n  ",mm_str,"\n")
 
-
     # Lot selection order for Sells -f will change LIFO to FIFO
     if (args.switch_lot_pref != True):
         print ("Lots are Sold in LIFO order.\n")
@@ -315,6 +528,7 @@ def main():
     else:
         print ("Lots are Sold in FIFO order.\n")
         lotorder = 'FIFO'
+
 
     # temporary file for generated transactions
     #    append items to tmp_bcgtfile
@@ -332,6 +546,7 @@ def main():
     fix_output = "cat "+tmp_bcgtfile_name+" "+blankline_tmp+" > "+fix_tmp
     move_output = "mv "+fix_tmp+" "+bcgtfile_name
     cleanup_tmpfiles = "rm "+tmp_bcgtfile_name+" "+blankline_tmp
+
 
     # Load the file contents.
     entries, errors, options_map = loader.load_file(args.filename)
@@ -437,226 +652,13 @@ def main():
         def __lt__(self, other):
             return other.obj < self.obj
 
+
     # the default is LIFO, but we can reverse it to FIFO instead
     slist = small_table.rows
     if (args.switch_lot_pref != True):
         slist = sorted(slist, key=lambda y: (y[0].lower(), reversor('{:%Y-%m-%d}'.format(y[6])+y[7])))
 
     #print (slist[0])
-
-    # I like to see the basis in a certain format
-
-    # this is from the documentation of Decimal
-    def moneyfmt(value, places=2, curr='', sep=',', dp='.',
-                 pos='', neg='-', trailneg=''):
-        """Convert Decimal to a money formatted string.
-    
-        places:  required number of places after the decimal point
-        curr:    optional currency symbol before the sign (may be blank)
-        sep:     optional grouping separator (comma, period, space, or blank)
-        dp:      decimal point indicator (comma or period)
-                 only specify as blank when places is zero
-        pos:     optional sign for positive numbers: '+', space or blank
-        neg:     optional sign for negative numbers: '-', '(', space or blank
-        trailneg:optional trailing minus indicator:  '-', ')', space or blank
-    
-        >>> d = Decimal('-1234567.8901')
-        >>> moneyfmt(d, curr='$')
-        '-$1,234,567.89'
-        >>> moneyfmt(d, places=0, sep='.', dp='', neg='', trailneg='-')
-        '1.234.568-'
-        >>> moneyfmt(d, curr='$', neg='(', trailneg=')')
-        '($1,234,567.89)'
-        >>> moneyfmt(Decimal(123456789), sep=' ')
-        '123 456 789.00'
-        >>> moneyfmt(Decimal('-0.02'), neg='<', trailneg='>')
-        '<0.02>'
-    
-        """
-        q = Decimal(10) ** -places      # 2 places --> '0.01'
-        sign, digits, exp = value.quantize(q).as_tuple()
-        result = []
-        digits = list(map(str, digits))
-        build, next = result.append, digits.pop
-        if sign:
-            build(trailneg)
-        for i in range(places):
-            build(next() if digits else '0')
-        if places:
-            build(dp)
-        if not digits:
-            build('0')
-        i = 0
-        while digits:
-            build(next())
-            i += 1
-            if i == 3 and digits:
-                i = 0
-                build(sep)
-        build(curr)
-        build(neg if sign else pos)
-        return ''.join(reversed(result))
-
-
-    # newmoneyfmt remove trailing zeros, except two
-    def newmoneyfmt(value):
-        """Convert Decimal to a money formatted string with
-        at most two zeroes.
-        """
-
-        refsub = re.compile(r"([-+]?(\d{1,3}(,\d{3})+|\d+))(\.)?(\d\d)?(\d*$)")
-
-        mval = moneyfmt(value, places=14, sep=',')
-
-        #print (mval)
-        match = refsub.search(mval)
-        #print ("match ", match)
-        if match is not None:
-            #print ("match groups : ", match.groups())
-            if int(match.group(5)) == 0:
-                newmval = match.group(1)+'.'+match.group(5)
-            else:
-                newmval = match.group(1)+'.'+match.group(5)+match.group(6).rstrip('0')
-
-        return newmval
-
-
-    # Buy shares
-    def buy_shares(sym, shares_to_buy, price, currency,
-        order, btoday, tmpfile):
-        """Buy shares and tag this lot with the proper label.
-        """
-
-        today_str = '{:%Y-%m-%d}'.format(btoday)
-        time_str = '{:%H%M%S}'.format(btoday)
-        lot = sym+'-'+today_str+'-'+time_str
-        lotstr = '(LOT '+lot+')'
-        amt_val = newmoneyfmt((minus_one * Decimal(price) * Decimal(shares_to_buy)))
-        #print ("Amt : ", amt_val)
-        str1 = today_str+' * \"Bought '+shares_to_buy+' '+sym+' @ '+price+'  '+order+'  '+lotstr+'\"\n'
-        #print (str1)
-        str2 = '  '+asset_str+sym+'    '+shares_to_buy+' '+sym+' {'+price+' '+currency+', '+today_str+', "'+lot+'"}\n'
-        #print (str2)
-        str3 = '  '+mm_str+'    '+amt_val+' '+currency+"\n\n"
-        #print (str3)
-        print (str1, str2, str3, file=tmpfile)
-
-
-    # Sell shares
-    def sell_shares(list, pos, sym, shares_to_sell, price, currency, sregfee,
-        order, stoday, tmpfile):
-        """Sell shares where the order of lots is determined by how
-        the list is sorted (LIFO is the default, FIFO is the other
-        option available).  The only error is if the shares do not
-        exist.  You can sell all of the shares by specifying a number
-        of shares larger than you have.  I do not sell shares short so
-        I stop at zero in all cases.  When more than one lot of shares
-        are sold the regfee is distributed across the shares in
-        proportion to the sizes of the lots or partial lots sold.  With
-        rounding being involved if you want precise control of fees
-        and lots it is best to sell only each lot at a time and then the
-        broker tells you what the fees are for that lot and then put that
-        information into this program one lot at a time with the fee.
-
-        Profits and Losses are not classified as short or long term
-        yet.
-        """
-
-        find_pos = pos
-        end = len(list) - 1
-        x_sym = list[find_pos][3]
-        lot_count = 1
-        total_shares = list[find_pos][2]
-        this_lot_shares = list[find_pos][2]
-        while ((find_pos < end) and (x_sym == list[find_pos+1][3])):
-            lot_count += 1
-            find_pos += 1
-            total_shares += list[find_pos][2]
-        finish = find_pos
-
-        #print ("Pos : ", pos)
-        #print ("Finish : ", finish)
-        #print ("Lot Count : ", lot_count)
-        #print ("Total Shares : ", total_shares)
-
-        #print ("Sh_To_Sell : ", shares_to_sell)
-        if (shares_to_sell > total_shares):
-            print (" Selling all shares")
-            shares_to_sell = total_shares
-        elif (shares_to_sell > this_lot_shares):
-            print (" Selling more than one lot")
-        elif (shares_to_sell == this_lot_shares):
-            print (" Selling one lot")
-        else:
-            print (" Selling a part of the lot ")
-        whats_left = sregfee
-        #print ("sregfee : ", sregfee)
-        regfee_per_share = sregfee / shares_to_sell
-        #print ("FeePerSh : ", regfee_per_share, "\n")
-
-        sell_pos = pos
-        sold_count = 0
-        while ((sold_count < shares_to_sell) and (sell_pos <= finish)):
-            #print ("Sell Pos : ", sell_pos)
-            if (sold_count < shares_to_sell):
-                if ((shares_to_sell - sold_count) >= list[sell_pos][2]):
-                    sell_these = list[sell_pos][2]
-                else:
-                    sell_these = shares_to_sell - sold_count
-            else:
-                sold_count = shares_to_sell
-
-            #print ("\n\n", sell_pos, list[sell_pos])
-            lot_shares = list[sell_pos][2]
-            lot_date = list[sell_pos][6]
-            #print ("Lot_Shares  :", lot_shares)
-            #print ("These_Shares  :", sell_these)
-            this_regfee = Decimal(regfee_per_share * sell_these).quantize(Decimal('.01'), rounding=ROUND_HALF_EVEN)
-            #print ("This Regfee : ", this_regfee)
-            if (this_regfee > whats_left):
-                #print (" Remaining fee ignored : ", this_regfee - whats_left)
-                this_regfee = whats_left
-            whats_left -= this_regfee
-            #print ("Whats Left : ", whats_left)
-            basis_price = list[sell_pos][4]
-            #print ("Basis Price : ", basis_price)
-            basis_val = basis_price * sell_these
-            #print (" Basis Val  : ", newmoneyfmt(basis_val))
-            #print (" Sale Price : ", price, "\n")
-
-            sale_value = sell_these * price
-            #print (" Sale Value : ", sale_value, "\n")
-            sale_pnl = (sale_value - basis_val - this_regfee) * minus_one
-            stoday_str = '{:%Y-%m-%d}'.format(stoday)
-            lot = list[sell_pos][7]
-            lotstr = '(LOT '+lot+')'
-
-            lot_date_str = '{:%Y-%m-%d}'.format(lot_date)
-            str0 = stoday_str+' * \"Sold '+str(sell_these)+' '+sym+' @ '+str(price)+' RegFee '+newmoneyfmt(this_regfee)+'  '+order+'  '+lotstr+'\"\n'
-            #print ('"Sold', sell_these, sym, '@', price, "RegFee", this_regfee, order, lotstr+'"')
-            #print (str0)
-            str1 = '  basis: "'+newmoneyfmt(basis_val)+'" \n'
-            #print (str1)
-            str2 = '  '+asset_str+sym+'    '+str(sell_these * minus_one)+' '+sym+' {'+str(basis_price)+' '+currency+', '+lot_date_str+', "'+lot+'"} @ '+str(price)+' '+currency+'\n'
-            #print (str2)
-            str3 = '  '+expenses_str+":"+sym+'    '+moneyfmt(minus_one * this_regfee)+' '+currency+'\n'
-            #print (str3)
-            str4 = '  '+equity_fees_str+'    '+moneyfmt(this_regfee)+' '+currency+'\n'
-            #print (str4)
-            str5 = '  '+income_str+sym+'    '+moneyfmt(sale_pnl)+' '+currency+'\n'
-            #print (str5)
-            str6 = '  '+mm_str+'    '+moneyfmt(sale_value - this_regfee)+' '+currency+"\n\n"
-            #print (str6)
-            print (str0, str1, str2, str3, str4, str5, str6, file=tmpfile)
-
-            sold_count += sell_these
-            #print (" lpos : ", sell_pos, "  Sell : ", sell_these)
-            #print (" lpos : ", sell_pos, "    Sold : ", sold_count)
-            #print (" lpos : ", sell_pos, "     Fee : ", this_regfee)
-            if (sold_count == shares_to_sell) and (whats_left != 0.00):
-                #print ("\n\nSome Fees not used : ", whats_left, "\n")
-                pass
-            sell_pos += 1
 
 
     print ('\n Shares      Price      Date            Lot Label           Basis')
@@ -732,7 +734,7 @@ def main():
                 num = spl[1]
                 price = spl[3]
 
-                buy_shares (sym, num, price, main_currency, lotorder, today, tmp_bcgtfile)
+                buy_shares (sym, num, price, main_currency, lotorder, today, asset_str, mm_str, tmp_bcgtfile)
 
             # Sell or Split
             elif command in ['S','X']:
@@ -760,7 +762,7 @@ def main():
                     amt_val = newmoneyfmt(price * num)
                     #print ("Amt : ", amt_val)
 
-                    sell_shares (slist, z, sym, num, price, main_currency, regfee, lotorder, today, tmp_bcgtfile)
+                    sell_shares (slist, z, sym, num, price, main_currency, regfee, lotorder, today, asset_str, expenses_str, equity_fees_str, income_str, mm_str, tmp_bcgtfile)
 
                 # Split
                 elif command == 'X' and len(spl) == 5:
