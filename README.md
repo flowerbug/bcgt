@@ -117,8 +117,9 @@ Dependencies: Python, autobean-format, beancount.
 I also set up virtual environments in python to run beancount so the different dependencies don't clash with my existing python system versions.
 
 
-# What about Split
+# What About Split And...
 
 [*] Split is not done yet.
 
+Also, I have not had to add any new commodities to the commodities.bc file, but at some point I hope to make that work automagically.
 
