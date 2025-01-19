@@ -46,7 +46,7 @@ usage: bcgt.py [-h] [-C CURRENCY] [-s] [-f] [-c OUTPUT_COMMODITIES]
 List Unsold Lots and Generate Buy, Sell and Split Transactions.
 
 The primary purpose of this script is to generate Buy, Sell and Split
-transactions.
+beancount transactions.
 
 The secondary purpose of this script is to:
 
