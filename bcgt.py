@@ -241,8 +241,7 @@ def write_table(table: Table, outfile: str):
         writer.writerow(table.header)
         writer.writerows(table.rows)
 
-
-def main():
+def do_args():
     parser = argparse.ArgumentParser(description=__doc__.strip())
     parser.add_argument('filename', help='Beancount input file')
 
@@ -270,8 +269,12 @@ def main():
     parser.add_argument('-o', '--output',
                         type=argparse.FileType('w'),
                         help="CSV filename to write out the final joined table to.")
+    return parser.parse_args()
 
-    args = parser.parse_args()
+
+def main():
+
+    args = do_args()
 
     print ("\nList Stock Lots and (B)Buy, (S)Sell or (X)Split generate Transactions.\n")
 
