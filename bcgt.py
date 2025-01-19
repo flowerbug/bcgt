@@ -242,6 +242,7 @@ def write_table(table: Table, outfile: str):
         writer.writerows(table.rows)
 
 def do_args():
+    """Process all of the command arguments."""
     parser = argparse.ArgumentParser(description=__doc__.strip())
     parser.add_argument('filename', help='Beancount input file')
 
