@@ -30,13 +30,10 @@ To Buy 10 shares of ABT at 112.00 type in "B 10 ABT 112.00" to generate the bean
 When Done type in D.
 
 
-# Summary Help Screen:
+# Help Screen:
 
-The formatting of this is rather horrible and I've not figured out how to get it to properly render so only an edited version is included here.
-
-```
+<pre>
 $ python bcgt.py --help ledger.bc
-
 
 usage: bcgt.py [-h] [-dest DESTINATION] [-C CURRENCY] [-s] [-f]
                [-c OUTPUT_COMMODITIES] [-a OUTPUT_ACCOUNTS] [-p OUTPUT_PRICES]
@@ -45,10 +42,57 @@ usage: bcgt.py [-h] [-dest DESTINATION] [-C CURRENCY] [-s] [-f]
 
 List Unsold Lots and Generate Buy, Sell and Split Transactions.
 
-If a destination path and file name is supplied the results will be appended to that location (the path and directory must already exist) otherwise a default location will be used.
+The primary purpose of this script is to generate Buy, Sell and Split
+beancount transactions.  If a destination path and file name is supplied
+the results will be appended to that location (the path and directory
+must already exist) otherwise a default location will be used.
 
-This version of the script has been modified to ignore some errors and to not rearrange the order so it may no longer provide the same output as the original version.
-```
+The secondary purpose of this script is to:
+- Produce a table of postings for the assets and liabilities
+- Produce a table of per-account attributes
+- Produce a table of per-commodity attributes
+- Join these tables
+- Output them to a CSV file.
+
+  Each of these can be output to a file.
+
+
+Note: This version of the script has been modified to ignore some errors
+and to not rearrange the order so it may no longer provide the same
+output as the original version.
+
+
+positional arguments:
+
+  filename              Beancount input file
+
+
+options:
+
+  -h, --help            show this help message and exit
+  -dest DESTINATION, --destination DESTINATION
+                        Destination of generated transactions
+  -C CURRENCY, --currency CURRENCY
+                        Override the default output currency (default is first
+                        operating currency)
+  -s, --switch-acct     Override the default account to REG (default is non-
+                        taxable ROTH account)
+  -f, --switch-lot-pref
+                        Override the default lot sale selection order to
+                        FIFO(default is LIFO)
+  -c OUTPUT_COMMODITIES, --output_commodities OUTPUT_COMMODITIES
+                        CSV filename to write out the commodities table to.
+  -a OUTPUT_ACCOUNTS, --output_accounts OUTPUT_ACCOUNTS
+                        CSV filename to write out the accounts table to.
+  -p OUTPUT_PRICES, --output_prices OUTPUT_PRICES
+                        CSV filename to write out the prices table to.
+  -r OUTPUT_RATES, --output_rates OUTPUT_RATES
+                        CSV filename to write out the rates table to.
+  -m OUTPUT_POSTINGS, --output_postings OUTPUT_POSTINGS
+                        CSV filename to write out the postings table to.
+  -o OUTPUT, --output OUTPUT
+                        CSV filename to write out the final joined table to.
+</pre>
 
 
 # Lot Order, Different Accounts, Multiple Lots, Fees, Partial Lots, All Lots
