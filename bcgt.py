@@ -4,6 +4,9 @@
 The primary purpose of this script is to generate Buy, Sell and Split
 beancount transactions.
 
+If a destination path and file name is supplied the results will be
+appended to that location (the path and directory must already exist).
+
 The secondary purpose of this script is to:
 
 - Produce a table of postings for the assets and liabilities
@@ -247,6 +250,9 @@ def do_args():
     parser = argparse.ArgumentParser(description=__doc__.strip())
     parser.add_argument('filename', help='Beancount input file')
 
+    parser.add_argument('-dest', '--destination', action='store',
+                        help=("Destination of generated transactions "
+                              ))
     parser.add_argument('-C', '--currency', action='store',
                         help=("Override the default output currency "
                               "(default is first operating currency)"))
@@ -495,6 +501,8 @@ def main():
 
     print ("\nList Stock Lots and (B)Buy, (S)Sell or (X)Split generate Transactions.\n")
 
+    # Local Configuration Values Start
+    #
     # Accounts used (the -s switch above will change which account to use)
     #   the default is ROTH:, -s toggles it to REG:
     brokerage_acct = "SB:SCH:"
@@ -529,11 +537,15 @@ def main():
         print ("Lots are Sold in FIFO order.\n")
         lotorder = 'FIFO'
 
+    if args.destination is not None:
+        print ("Destination Location Supplied as : ", args.destination)
+        print ("  Transactions will be appended.")
 
     # temporary file for generated transactions
     #    append items to tmp_bcgtfile
     #   when finished bcgtfile_name will contain postprocessed
     #     transactions formatted with autobean-format
+    #     if destination file is supplied transactions will be appended there
     bcgtfile_base = "trans-"+roth_or_reg.lower().replace(':','')
     tmp_bcgtfile_name = "/tmp/"+bcgtfile_base+".tmp"
     tmp_bcgtfile = open(tmp_bcgtfile_name, 'a')
@@ -545,7 +557,13 @@ def main():
     postprocess = "autobean-format --indent=\'  \' --currency-column 60 --cost-column 60 --output-mode inplace --thousands-separator add "+tmp_bcgtfile_name
     fix_output = "cat "+tmp_bcgtfile_name+" "+blankline_tmp+" > "+fix_tmp
     move_output = "mv "+fix_tmp+" "+bcgtfile_name
+    if args.destination is not None:
+        do_dest_append = "cat "+bcgtfile_name+" >> "+args.destination
     cleanup_tmpfiles = "rm "+tmp_bcgtfile_name+" "+blankline_tmp
+
+    #
+    # Local Configuration End
+
 
 
     # Load the file contents.
@@ -786,6 +804,8 @@ def main():
     os.system(mk_bl_tmp)
     os.system (fix_output)
     os.system (move_output)
+    if args.destination is not None:
+        os.system (do_dest_append)
     os.system (cleanup_tmpfiles)
     
     print ("OUTPUT -->")

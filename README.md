@@ -37,35 +37,29 @@ Here is the current help screen from running the command:
 ```
 $python bcgt.py --help ledger.bc
 
-
-usage: bcgt.py [-h] [-C CURRENCY] [-s] [-f] [-c OUTPUT_COMMODITIES]
-               [-a OUTPUT_ACCOUNTS] [-p OUTPUT_PRICES] [-r OUTPUT_RATES]
-               [-m OUTPUT_POSTINGS] [-o OUTPUT]
+usage: bcgt.py [-h] [-dest DESTINATION] [-C CURRENCY] [-s] [-f]
+               [-c OUTPUT_COMMODITIES] [-a OUTPUT_ACCOUNTS] [-p OUTPUT_PRICES]
+               [-r OUTPUT_RATES] [-m OUTPUT_POSTINGS] [-o OUTPUT]
                filename
 
-List Unsold Lots and Generate Buy, Sell and Split Transactions.
-
-The primary purpose of this script is to generate Buy, Sell and Split
-beancount transactions.
-
-The secondary purpose of this script is to:
-
-- Produce a table of postings for the assets and liabilities
-- Produce a table of per-account attributes
-- Produce a table of per-commodity attributes
-- Join these tables
-- Output them to a CSV file.
-
-Note: This version of the script has been modified to ignore some errors and
-to not rearrange the order so it may no longer provide the same output as the
-original version.
-
+List Unsold Lots and Generate Buy, Sell and Split Transactions. The primary
+purpose of this program is to generate Buy, Sell and Split beancount
+transactions. If a destination path and file name is supplied the results will
+be appended to that location (the path and directory must already exist). The
+secondary purpose of this program is to: - Produce a table of postings for the
+assets and liabilities - Produce a table of per-account attributes - Produce a
+table of per-commodity attributes - Join these tables - Output them to a CSV
+file. Note: This version of the program has been modified to ignore some errors
+and to not rearrange the order so it may no longer provide the same output as
+the original version.
 
 positional arguments:
   filename              Beancount input file
 
 options:
   -h, --help            show this help message and exit
+  -dest DESTINATION, --destination DESTINATION
+                        Destination of generated transactions
   -C CURRENCY, --currency CURRENCY
                         Override the default output currency (default is first
                         operating currency)
@@ -86,6 +80,7 @@ options:
                         CSV filename to write out the postings table to.
   -o OUTPUT, --output OUTPUT
                         CSV filename to write out the final joined table to.
+
 ```
 
 
@@ -93,7 +88,7 @@ options:
 
 The default Sell lot order is LIFO, but there is the switch -f to change that to FIFO.  The default account is a ROTH account but there is the switch -s to change that to REG.  All of these can be changed in the source code to fit your account preferences (along with the account to get funds from or to put funds into).
 
-If you sell more shares than are in the first lot available this script will keep selling lots in the preferred order to fit your desires.  The fee is split proportionately among the different lots, but it may not be accurate in reflecting what the stock brokerage does, so it may really be best to sell only within one lot at a time (at least until I can find out what the formula actually is).  This code will also sell a part of a lot.  Or if you want to sell all of your shares you can put in a big number and it will sell all your lots and then stop when they're gone.
+If you sell more shares than are in the first lot available this program will keep selling lots in the preferred order to fit your desires.  The fee is split proportionately among the different lots, but it may not be accurate in reflecting what the stock brokerage does, so it may really be best to sell only within one lot at a time (at least until I can find out what the formula actually is).  This code will also sell a part of a lot.  Or if you want to sell all of your shares you can put in a big number and it will sell all your lots and then stop when they're gone.
 
 
 # About Lot labels
@@ -103,9 +98,17 @@ You can change it to whatever you like, but I use a combination of the stock sym
 If you are generating Buy transactions around midnight the date of the transaction and the lot label will change.
 
 
-# For The Moment in This Initial Version
+# The Destination Path and File
 
-I am not changing or adding to existing files at all.  To make actual changes reflect in what you see and can act upon in this script you have to generate the transaction, put it in your transaction files someplace and then rerun this script.  Yes, it is temporarily clunky, but that is the safe way to do things for the moment.  Instead I am appending to temporary files which then can be edited if needed before being added to the regular transaction files.
+By default I am not changing or adding to existing files at all.  To make actual changes reflect in what you see and can act upon in this program you have to generate the transaction and then put it in your transaction files someplace and then rerun this program.
+
+With this most recent version you can specify a location to append the transactions generated using the --dest option on the command line and as a part of that specification include the path and filename.  As an example:
+
+$ python bcgt.py --dest tree/Assets/SB/SCH/latest.bc ledger.bc
+
+There is a current minor error where if no transactions are generated it will append a blank line.  The ledger.bc will pick up any added files with the .bc extension.
+
+Currently to reflect these changes you still have to rerun this program.  The next version will rescan everything each time a transaction is generated and a destination is supplied.  The quickest way I can do that right now is to not be too concerned about how long that reprocessing takes or other considerations like wear and tear on SSDs or Disk drives - eventually I hope to do this in a more efficient manner.
 
 
 # What Am I Running This On
