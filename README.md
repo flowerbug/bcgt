@@ -100,15 +100,15 @@ If you are generating Buy transactions around midnight the date of the transacti
 
 # The Destination Path and File
 
-By default I am not changing or adding to existing files at all.  To make actual changes reflect in what you see and can act upon in this program you have to generate the transaction and then put it in your transaction files someplace and then rerun this program.
+By default I am not changing or adding to existing files in the account hierarchy.  The output from this script would need to be moved or added to existing transaction files.
 
-With this most recent version you can specify a location to append the transactions generated using the --dest option on the command line and as a part of that specification include the path and filename.  As an example:
+To save those steps with this most recent version you can specify a location to append the transactions generated using the --dest option on the command line and as a part of that specification include the path and filename.  As an example:
 
 $ python bcgt.py --dest tree/Assets/SB/SCH/latest.bc ledger.bc
 
-There is a current minor error where if no transactions are generated it will append a blank line.  The ledger.bc will pick up any added files with the .bc extension.
+The ledger.bc supplied in this release will pick up any added files with the .bc extension in the tree/Assets/SB/SCH directory.
 
-Currently to reflect these changes you still have to rerun this program.  The next version will rescan everything each time a transaction is generated and a destination is supplied.  The quickest way I can do that right now is to not be too concerned about how long that reprocessing takes or other considerations like wear and tear on SSDs or Disk drives - eventually I hope to do this in a more efficient manner.
+Currently to reflect changes you still have to rerun this program.
 
 
 # What Am I Running This On
@@ -125,4 +125,12 @@ I also set up virtual environments in python to run beancount so the different d
 [*] Split is not done yet.
 
 Also, I have not had to add any new commodities to the commodities.bc file, but at some point I hope to make that work automagically.
+
+
+# Errors And Breaking Changes
+
+There is minor error where if no transactions are generated it will append a blank line.
+
+Version 1.0.0 will rescan everything each time a transaction is generated.  The quickest way I can do that right now is to not be too concerned about how long that reprocessing takes or other considerations like wear and tear on SSDs or Disk drives - eventually I hope to do this in a more efficient manner.  Along with that 1.0.0 version I will remove the existing default behavior of not appending or moving any transactions to the account hierarchy.  So there will be the above default location built in and then to override that location you could either change the program or specify the --dest path and filename.
+
 
