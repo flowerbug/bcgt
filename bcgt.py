@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""List Unsold Lots and Generate Buy, Sell and Split Transactions.
+"""
+List Unsold Lots and Generate Buy, Sell and Split Transactions.
 
-The primary purpose of this script is to generate Buy, Sell and Split
-beancount transactions.
+The primary purpose of this script is to generate Buy, Sell and Split beancount transactions.
 
-If a destination path and file name is supplied the results will be
-appended to that location (the path and directory must already exist).
+If a destination path and file name is supplied the results will be appended to that location (the path and directory must already exist) otherwise a default location will be used.
 
 The secondary purpose of this script is to:
 
@@ -15,10 +14,7 @@ The secondary purpose of this script is to:
 - Join these tables
 - Output them to a CSV file.
 
-Note: This version of the script has been modified to ignore some errors and
-to not rearrange the order so it may no longer provide the same output as the
-original version.
-
+Note: This version of the script has been modified to ignore some errors and to not rearrange the order so it may no longer provide the same output as the original version.
 """
 
 __copyright__ = "Copyright (C) 2018  Martin Blais"
@@ -377,6 +373,8 @@ def buy_shares(sym, shares_to_buy, price, currency,
     #print (str3)
     print (str1, str2, str3, file=tmpfile)
 
+    return 1
+
 
 # Sell shares
 def sell_shares(list, pos, sym, shares_to_sell, price, currency, sregfee,
@@ -430,6 +428,7 @@ def sell_shares(list, pos, sym, shares_to_sell, price, currency, sregfee,
     regfee_per_share = sregfee / shares_to_sell
     #print ("FeePerSh : ", regfee_per_share, "\n")
 
+    number_of_transactions = 0
     sell_pos = pos
     sold_count = 0
     while ((sold_count < shares_to_sell) and (sell_pos <= finish)):
@@ -493,6 +492,9 @@ def sell_shares(list, pos, sym, shares_to_sell, price, currency, sregfee,
             #print ("\n\nSome Fees not used : ", whats_left, "\n")
             pass
         sell_pos += 1
+        number_of_transactions += 1
+
+    return number_of_transactions
 
 
 def main():
@@ -514,6 +516,11 @@ def main():
     expenses = "Expenses:"
     fees = "Fees:RegFees"
     mm_acct = "SCHONEMM"
+
+    # always required to be set one way or another, this is the
+    # default value, you can always change it to suit your account
+    # heirarchy.
+    local_destination = "tree/Assets/SB/SCH/latest.bc"
 
     if args.switch_acct == True:
         print ("Using Regular (taxable) Account")
@@ -537,9 +544,13 @@ def main():
         print ("Lots are Sold in FIFO order.\n")
         lotorder = 'FIFO'
 
+    # destination of transactions, must always be set one way or another
     if args.destination is not None:
         print ("Destination Location Supplied as : ", args.destination)
-        print ("  Transactions will be appended.")
+    else:
+        args.destination = local_destination
+        print ("Destination Location Default is : ", args.destination)
+    print ("  Transactions will be appended.")
 
     # temporary file for generated transactions
     #    append items to tmp_bcgtfile
@@ -548,7 +559,6 @@ def main():
     #     if destination file is supplied transactions will be appended there
     bcgtfile_base = "trans-"+roth_or_reg.lower().replace(':','')
     tmp_bcgtfile_name = "/tmp/"+bcgtfile_base+".tmp"
-    tmp_bcgtfile = open(tmp_bcgtfile_name, 'a')
     fix_tmp = "/tmp/fix_tmp"
     blankline_tmp = "/tmp/blankline_tmp"
     mk_bl_tmp = "echo > "+blankline_tmp
@@ -565,149 +575,155 @@ def main():
     # Local Configuration End
 
 
-
-    # Load the file contents.
-    entries, errors, options_map = loader.load_file(args.filename)
-
-    # Initialize main output currency.
-    main_currency = args.currency or options_map['operating_currency'][0]
-
-    # Get the map of commodities to their meta tags.
-    commodities_table = get_commodities_table(
-        entries, ['export', 'assetcls', 'strategy', 'issuer'])
-    if args.output_commodities is not None:
-        write_table(commodities_table, args.output_commodities)
-
-    #print (commodities_table)
-
-    # Get a table of the commodity names.
-    #
-    # Note: We're fetching the table separately in order to avoid changes to the
-    # spreadsheet upstream, and want to tack on the values as new columns on the
-    # right.
-    names_table = get_commodities_table(entries, ['name'])
-
-    #print (names_table)
-
-    # Get the map of accounts to their meta tags.
-    accounts_table, accounts_map = get_accounts_table(
-        entries, ['tax', 'liquid'])
-    if args.output_accounts is not None:
-        write_table(accounts_table, args.output_accounts)
-
-    #print (accounts_table)
-
-    # Enumerate the list of assets.
-    postings_table = get_postings_table(entries, options_map, accounts_map)
-    if args.output_postings is not None:
-        write_table(postings_table, args.output_postings)
-
-    #print (postings_table)
-
-    # Get the list of prices.
-    prices_table = get_prices_table(entries, main_currency)
-    if args.output_prices is not None:
-        write_table(prices_table, args.output_prices)
-
-    #print (prices_table)
-
-    # Get the list of exchange rates.
-    index = postings_table.header.index('cost_currency')
-    currencies = set(row[index] for row in postings_table.rows)
-    rates_table = get_rates_table(entries, currencies, main_currency)
-    if args.output_rates is not None:
-        write_table(rates_table, args.output_rates)
-
-    #print (rates_table)
-
-    # Join all the tables.
-    joined_table = join(postings_table,
-                        (('currency',), commodities_table),
-                        (('account',), accounts_table),
-                        (('currency', 'cost_currency'), prices_table),
-                        (('cost_currency',), rates_table),
-                        (('currency',), names_table))
-
-    table = Table(joined_table.header, joined_table.rows)
-
-    # Build a smaller table with just the rows we need
-    small = []
-    try:
-        val = None
-        for y in range(len(table.rows)):
-            x = table.rows[y]
-            if ((x[7] is not None) and
-               (x[1].startswith('SCH:'+roth_or_reg))):
-                acct = x[1]
-                chunks = acct.split(":")
-                psymbol = chunks[1]+':'+chunks[2]
-                nval = x[3]
-                if val != nval:
-                    #print ('\n')
-                    #print (x[3])
-                    val = nval
-                #print ('   ', f'{x[2]:<{10}.{8}}'.format(),' ', f'{x[4]:<{10}.{8}}'.format(), ' ', x[6], ' ', x[7])
-                x.append(psymbol)
-                #print (x)
-                small.append(x)
-        small_table = Table(joined_table.header, small)
-    except:
-        pass
-    #print ('\n\n')
-
-
-    # I want to sort the table alphabetically on the acct:symbol but
-    #   in reverse order on the date and the lot number within the 
-    #   date so the most recent trades are listed first.  (aka LIFO
-    #   by default.
-    class reversor:
-        def __init__(self, obj):
-            self.obj = obj
-
-        def __eq__(self, other):
-            return other.obj == self.obj
-
-        def __lt__(self, other):
-            return other.obj < self.obj
-
-
-    # the default is LIFO, but we can reverse it to FIFO instead
-    slist = small_table.rows
-    if (args.switch_lot_pref != True):
-        slist = sorted(slist, key=lambda y: (y[0].lower(), reversor('{:%Y-%m-%d}'.format(y[6])+y[7])))
-
-    #print (slist[0])
-
-
-    print ('\n Shares      Price      Date            Lot Label           Basis')
-
-    # show list
-    total = Decimal(0)
-    val = None
-    for y in range(len(slist)):
-        x = slist[y]
-        #print (x)
-        nval = x[0]
-        if val != nval:
-            print ('\n')
-            print (x[17])
-            val = nval
- 
-        monval = newmoneyfmt(x[2] * x[4])
-        total += x[2] * x[14]
- 
-        print (' ', f'{x[2]:<{9}.{7}}'.format(),f'{x[4]:<{9}.{7}}'.format(), x[6], ' ', '{0: <23}'.format(x[7]), monval)
-
-    #print ("\nTotal : ", newmoneyfmt(total))
-
-    # Keep going until done
+    # Keep going until done, reloading transactions each time if
+    # something has changed or during the first run
 
     done = False
+
+    # to make sure we load at least once
+    tot_trans = 1
 
     while (done == False):
 
         found = None
+        tmp_bcgtfile = open(tmp_bcgtfile_name, 'a')
 
+        # Load the file contents.
+        if (tot_trans != 0):
+            entries, errors, options_map = loader.load_file(args.filename)
+            tot_trans = 0
+    
+        # Initialize main output currency.
+        main_currency = args.currency or options_map['operating_currency'][0]
+    
+        # Get the map of commodities to their meta tags.
+        commodities_table = get_commodities_table(
+            entries, ['export', 'assetcls', 'strategy', 'issuer'])
+        if args.output_commodities is not None:
+            write_table(commodities_table, args.output_commodities)
+    
+        #print (commodities_table)
+    
+        # Get a table of the commodity names.
+        #
+        # Note: We're fetching the table separately in order to avoid changes to the
+        # spreadsheet upstream, and want to tack on the values as new columns on the
+        # right.
+        names_table = get_commodities_table(entries, ['name'])
+    
+        #print (names_table)
+    
+        # Get the map of accounts to their meta tags.
+        accounts_table, accounts_map = get_accounts_table(
+            entries, ['tax', 'liquid'])
+        if args.output_accounts is not None:
+            write_table(accounts_table, args.output_accounts)
+    
+        #print (accounts_table)
+    
+        # Enumerate the list of assets.
+        postings_table = get_postings_table(entries, options_map, accounts_map)
+        if args.output_postings is not None:
+            write_table(postings_table, args.output_postings)
+    
+        #print (postings_table)
+    
+        # Get the list of prices.
+        prices_table = get_prices_table(entries, main_currency)
+        if args.output_prices is not None:
+            write_table(prices_table, args.output_prices)
+    
+        #print (prices_table)
+    
+        # Get the list of exchange rates.
+        index = postings_table.header.index('cost_currency')
+        currencies = set(row[index] for row in postings_table.rows)
+        rates_table = get_rates_table(entries, currencies, main_currency)
+        if args.output_rates is not None:
+            write_table(rates_table, args.output_rates)
+    
+        #print (rates_table)
+    
+        # Join all the tables.
+        joined_table = join(postings_table,
+                            (('currency',), commodities_table),
+                            (('account',), accounts_table),
+                            (('currency', 'cost_currency'), prices_table),
+                            (('cost_currency',), rates_table),
+                            (('currency',), names_table))
+    
+        table = Table(joined_table.header, joined_table.rows)
+    
+        # Build a smaller table with just the rows we need
+        small = []
+        try:
+            val = None
+            for y in range(len(table.rows)):
+                x = table.rows[y]
+                if ((x[7] is not None) and
+                   (x[1].startswith('SCH:'+roth_or_reg))):
+                    acct = x[1]
+                    chunks = acct.split(":")
+                    psymbol = chunks[1]+':'+chunks[2]
+                    nval = x[3]
+                    if val != nval:
+                        #print ('\n')
+                        #print (x[3])
+                        val = nval
+                    #print ('   ', f'{x[2]:<{10}.{8}}'.format(),' ', f'{x[4]:<{10}.{8}}'.format(), ' ', x[6], ' ', x[7])
+                    x.append(psymbol)
+                    #print (x)
+                    small.append(x)
+            small_table = Table(joined_table.header, small)
+        except:
+            pass
+        #print ('\n\n')
+    
+    
+        # I want to sort the table alphabetically on the acct:symbol but
+        #   in reverse order on the date and the lot number within the 
+        #   date so the most recent trades are listed first.  (aka LIFO
+        #   by default.
+        class reversor:
+            def __init__(self, obj):
+                self.obj = obj
+    
+            def __eq__(self, other):
+                return other.obj == self.obj
+    
+            def __lt__(self, other):
+                return other.obj < self.obj
+    
+    
+        # the default is LIFO, but we can reverse it to FIFO instead
+        slist = small_table.rows
+        if (args.switch_lot_pref != True):
+            slist = sorted(slist, key=lambda y: (y[0].lower(), reversor('{:%Y-%m-%d}'.format(y[6])+y[7])))
+    
+        #print (slist[0])
+    
+    
+        print ('\n Shares      Price      Date            Lot Label           Basis')
+    
+        # show list
+        total = Decimal(0)
+        val = None
+        for y in range(len(slist)):
+            x = slist[y]
+            #print (x)
+            nval = x[0]
+            if val != nval:
+                print ('\n')
+                print (x[17])
+                val = nval
+     
+            monval = newmoneyfmt(x[2] * x[4])
+            total += x[2] * x[14]
+     
+            print (' ', f'{x[2]:<{9}.{7}}'.format(),f'{x[4]:<{9}.{7}}'.format(), x[6], ' ', '{0: <23}'.format(x[7]), monval)
+    
+        #print ("\nTotal : ", newmoneyfmt(total))
+    
         # Buy, Sell, Split or Done
         print ('\n\n(B)Buy, (S)Sell, (X)Split or (D)one\nEnter: \"B <num> <sym> <price>\" or \"S <num> <sym> <price> <regfee>\" or \"X <sym> <anum> FOR <bnum> or \"D\"\n')
         linein = input().upper()
@@ -718,6 +734,7 @@ def main():
         # we need some input
         if spl is None or spl == []:
            print ("\n\nNeed correct input.")
+           tot_trans = 0
            continue
         else:
            spl[0] = spl[0][0]
@@ -748,11 +765,12 @@ def main():
             if command in ['B']:
                 if (len(spl) != 4):
                     print ("\n\nNeed Buys to look like B <num> <sym> <price>.")
+                    tot_trans = 0
                     break
                 num = spl[1]
                 price = spl[3]
 
-                buy_shares (sym, num, price, main_currency, lotorder, today, asset_str, mm_str, tmp_bcgtfile)
+                tot_trans = buy_shares (sym, num, price, main_currency, lotorder, today, asset_str, mm_str, tmp_bcgtfile)
 
             # Sell or Split
             elif command in ['S','X']:
@@ -764,14 +782,16 @@ def main():
 
                 if found == None:
                     print ("\n\nCan't find", sym)
+                    tot_trans = 0
                     continue
 
                 # Sell
                 if command in ['S']:
 
                     if (len(spl) != 5):
-                       print ("\n\nNeed Sells to look like S <num> <sym> <price> <regfee>.")
-                       continue
+                        print ("\n\nNeed Sells to look like S <num> <sym> <price> <regfee>.")
+                        tot_trans = 0
+                        continue
 
                     num = Decimal(spl[1])
                     sym = spl[2]
@@ -780,37 +800,47 @@ def main():
                     amt_val = newmoneyfmt(price * num)
                     #print ("Amt : ", amt_val)
 
-                    sell_shares (slist, z, sym, num, price, main_currency, regfee, lotorder, today, asset_str, expenses_str, equity_fees_str, income_str, mm_str, tmp_bcgtfile)
+                    tot_trans = sell_shares (slist, z, sym, num, price, main_currency, regfee, lotorder, today, asset_str, expenses_str, equity_fees_str, income_str, mm_str, tmp_bcgtfile)
 
                 # Split
                 elif command == 'X' and len(spl) == 5:
-                     print ('\"Split', sym, num, 'FOR', splfor+'"')
-                     print ('   Not written yet...')
+                    print ('\"Split', sym, num, 'FOR', splfor+'"')
+                    print ('   Not written yet...')
+                    tot_trans = 0
 
                 else:
                     print ("Missing something on Split?", spl)
+                    tot_trans = 0
+
+        # post process any contents of tmp_bcgtfile to get bcgtfile
+        #   if destination is supplied append the transactions there
+        if tot_trans > 0:
+            tmp_bcgtfile.flush()
+            tmp_bcgtfile.close()
+            #os.system ("cat "+tmp_bcgtfile_name)
+            os.system (postprocess)
+            os.system(mk_bl_tmp)
+            os.system (fix_output)
+            os.system (move_output)
+            if args.destination is not None:
+                os.system (do_dest_append)
+            os.system (cleanup_tmpfiles)
+
+            print ("OUTPUT -->")
+            os.system ("cat "+bcgtfile_name)
+            print ("<--OUTPUT")
+
+            # tot_trans is cleared after reloading up above...
+            #   or something strange happened and we don't want to
+            #   reload
+
 
         elif command in ['D']:
            done = True
         else:
            print ("What?")
+           tot_trans = 0
 
-
-    # post process any contents of tmp_bcgtfile to get bcgtfile
-    tmp_bcgtfile.flush()
-    tmp_bcgtfile.close()
-    #os.system ("cat "+tmp_bcgtfile_name)
-    os.system (postprocess)
-    os.system(mk_bl_tmp)
-    os.system (fix_output)
-    os.system (move_output)
-    if args.destination is not None:
-        os.system (do_dest_append)
-    os.system (cleanup_tmpfiles)
-    
-    print ("OUTPUT -->")
-    os.system ("cat "+bcgtfile_name)
-    print ("<--OUTPUT")
 
     # Export table if requested
     if args.output is not None:
