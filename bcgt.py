@@ -474,9 +474,9 @@ def sell_shares(list, pos, sym, shares_to_sell, price, currency, sregfee,
         #print (str1)
         str2 = '  '+asset_str+sym+'    '+str(sell_these * Decimal(-1))+' '+sym+' {'+str(basis_price)+' '+currency+', '+lot_date_str+', "'+lot+'"} @ '+str(price)+' '+currency+'\n'
         #print (str2)
-        str3 = '  '+expenses_str+":"+sym+'    '+moneyfmt(Decimal(-1) * this_regfee)+' '+currency+'\n'
+        str3 = '  '+expenses_str+'    '+moneyfmt(this_regfee)+' '+currency+'\n'
         #print (str3)
-        str4 = '  '+equity_fees_str+'    '+moneyfmt(this_regfee)+' '+currency+'\n'
+        str4 = '  '+equity_fees_str+":"+sym+'    '+moneyfmt(Decimal(-1) * this_regfee)+' '+currency+'\n'
         #print (str4)
         str5 = '  '+income_str+sym+'    '+moneyfmt(sale_pnl)+' '+currency+'\n'
         #print (str5)
@@ -714,7 +714,7 @@ def main():
             nval = x[0]
             if val != nval:
                 print ('\n')
-                print (x[17])
+                #print (x[17])
                 val = nval
      
             monval = newmoneyfmt(x[2] * x[4])
