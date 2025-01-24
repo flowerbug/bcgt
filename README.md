@@ -12,6 +12,15 @@ License: "GNU GPLv2"
 My changes are copyright to me flowerbug@anthive.com, but nothing I'm doing is very complicated.
 
 
+# A Mistake in Previous Versions (v1.0.1 or Earlier)
+
+  I was going through some transactions the other day and noticed I'd reversed Equity and Expenses amounts on sells. I normally have expenses positive amounts and so the amount must come from equity which then has to be negative.
+
+  I'm sorry, this was something I should have noticed earlier.  You will need to go back and fix transactions from before.
+
+  Please update to at least v2.0.0.
+
+
 # Introduction and Rationale
 
 export.py was not working on beancount v2 or v3 but I removed some parts that were giving errors so I could get a usable result.  In no way is the output of bcgt meant to be compatible with what export.py produced, but there might be similarities.
@@ -140,8 +149,9 @@ Also, I have not had to add any new commodities to the commodities.bc file, but 
 
 I make everything upper case when typed in so I don't have to wonder what the input looks like.
 
-No errors or issues other than those noted above (fees and new symbols).
+No errors or issues other than those noted above (update to v2.0.0, fees and new symbols).
 
 Version 1.0.0 rescans all transactions each time a new transaction is generated and I no longer keep all of the transactions generated per run of the program in the out file (they are being appended to the latest file).
 
+Version 2.0.0 fixes a mistake I made (see above).
 
