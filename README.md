@@ -2,7 +2,7 @@
 
 # Bcgt
 
-A Beancount Tool to Generate Beancount Transactions for Stock Buys, Sells, Splits[*].
+A Beancount Tool to Generate Beancount Transactions for Stock Buys, Sells, Splits.
 
 Bcgt is adapted from the export.py program referenced from beangrow which was available in earlier beancount versions, written by Martin Blais, with the following:
 
@@ -12,7 +12,7 @@ License: "GNU GPLv2"
 My changes are copyright to me flowerbug@anthive.com, but nothing I'm doing is very complicated.
 
 
-# A Mistake in Previous Versions (v2.0.0 or Earlier)
+# Latest News v2.2.0 - A Mistake in Previous Versions (v2.0.0 or Earlier)
 
   I was going through some transactions the other day and noticed I'd reversed Equity and Expenses amounts on sells. I normally have expenses positive amounts and so the amount must come from equity which then has to be negative.
 
@@ -20,21 +20,26 @@ My changes are copyright to me flowerbug@anthive.com, but nothing I'm doing is v
 
   My version 2.0.0 also had mistakes so that is also now fixed.  Please update to at least v2.0.1.
 
+  Version 2.2.0 includes Split and a few other changes which are not breaking changes:
+
+- If you are entering a lot of sell transactions that do not have a fee you can leave the zero off the end and it will be entered for you as zero.  Do not be upset at seeing a negative zero in your transaction - it is a valid python Decimal value and I like having that there to remind me that the value should be negative if it is there at all.
+- The price per share basis amount was previously just being set to whatever was typed in, but I decided I wanted those amounts to at least look like dollars and cents, so now those amounts from a buy are at least specified to two decimal places even if you type in a whole number.
+
 
 # Introduction and Rationale
 
 export.py was not working on beancount v2 or v3 but I removed some parts that were giving errors so I could get a usable result.  In no way is the output of bcgt meant to be compatible with what export.py produced, but there might be similarities.
 
-I edited export.py to provide a list of lots of stock currently held.  Enter commands to Buy, Sell or Split[*].  What bcgt then does is generate beancount transactions that will get further processed by autobean-format (and since I am picky about how I like my transactions to look I use several options when running it).  These transactions are printed to the terminal and they are also placed into a file in either a default location or one you specify via the --dest parameter.  The main rationale for using this program is that it finds all of your current lots for you (so you don't have to search for them) and it also does the math and formatting.
+I edited export.py to provide a list of lots of stock currently held.  Enter commands to Buy, Sell or Split.  What bcgt then does is generate beancount transactions that will get further processed by autobean-format (and since I am picky about how I like my transactions to look I use several options when running it).  These transactions are printed to the terminal and they are also placed into a file in either a default location or one you specify via the --dest parameter.  The main rationale for using this program is that it finds all of your current lots for you (so you don't have to search for them) and it also does the math and formatting.
 
 After making any change all the files will be rescanned and the list will be redisplayed.
 
 
-# Two Short Examples
+# Three Short Examples
 
 It is a very simple command line interface if you are familiar with the export.py program I have currently kept all the existing options and just added a few more.
 
-To Buy 10 shares of ABT at 112.00 type in "B 10 ABT 112.00" to generate the beancount transaction which will then get put into a temporary file.  To Sell you would type in "S 10 ABT 120.00 0.05" (the last number 0.05 is the fee the broker charges you which will be subtracted from your gains or added to your losses).
+To Buy 10 shares of ABT at 112.00 type in "B 10 ABT 112.00" to generate the beancount transaction which will then get put into a temporary file.  To Sell you would type in "S 10 ABT 120.00 0.05" (the last number 0.05 is the fee the broker charges you which will be subtracted from your gains or added to your losses).  To Split you would type in "X ABT 2 FOR 1".
 
 When Done type in D.
 
@@ -126,7 +131,13 @@ $ python bcgt.py --dest tree/Assets/SB/SCH/latest.bc ledger.bc
 
 The ledger.bc supplied in this release will pick up ANY added files with the .bc extension in the tree/Assets/SB/SCH directory.
 
-By default I am not changing or adding to existing files in the account hierarchy other than the default path and file.  Once you are satisfied that the latest transactions are correct you can move them to other files.  I recommend this cautious and examined approach along with regular backups.  I do not recommend using any other destination.  Please make backups and test before risking a lot of work.  And if you do mess things up even after being warned - it isn't my fault.
+By default I am not changing or adding to existing files in the account hierarchy other than the default path and file.  Once you are satisfied that the latest transactions are correct you can move them to other files.  I recommend this cautious and examined approach along with regular backups.  I do not recommend using any other destination.  Please make backups and test before risking a lot of work.  And if you do mess things up even after being warned - it isn't my fault.  So far I have not noticed anything odd happening.
+
+What about /dev/null?  Sure!  If you want to take the output from the screen and don't want any transactions put anyplace else.  Just use:
+
+$ python bcgt.py --dest /dev/null ledger.bc
+
+As usual you would need to have permission to access and to append to any destination file.  I currently don't do any error checking on the destination.
 
 
 # What Am I Running This On
@@ -138,20 +149,24 @@ Dependencies: Python, autobean-format, beancount.
 I also set up virtual environments in python to run beancount so the different dependencies don't clash with my existing python system versions.
 
 
-# What About Split And...
+# What About Split?
 
-[*] Split is not done yet.
-
-Also, I have not had to add any new commodities to the commodities.bc file, but at some point I hope to make that work automagically.
+Split now works.
 
 
 # Notes, Errors And Breaking Changes
 
 I make everything upper case when typed in so I don't have to wonder what the input looks like.
 
-No errors or issues other than those noted above (update to v2.0.1, fees and new symbols).
+If you accidentally type in something that isn't a number where it should be you will get some rather unhelpful error messages - I need to improve that.
+
+I have not had to add any new commodities/symbols to the commodities.bc file, but at some point I hope to make that work automatically.  I usually edit prices.bc to add new symbols, but I also hope to get that to happen automatically.
+
+Currently no error checking is done on the destination location or file or permissions.
 
 Version 1.0.0 rescans all transactions each time a new transaction is generated and I no longer keep all of the transactions generated per run of the program in the out file (they are being appended to the latest file).
 
-Version 2.0.1 fixes mistakes I made(see above).
+Version 2.0.1 fixes mistakes I made (update to at least version 2.0.1).
+
+No errors or issues I'm aware of other than those I've noted here or up above.
 
