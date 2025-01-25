@@ -365,9 +365,11 @@ def buy_shares(sym, shares_to_buy, price, currency,
     lotstr = '(LOT '+lot+')'
     amt_val = newmoneyfmt((Decimal(-1) * Decimal(price) * Decimal(shares_to_buy)))
     #print ("Amt : ", amt_val)
+    price_str = newmoneyfmt(Decimal(price))
+    print (' "Bought', shares_to_buy, sym, '@', price, order, lotstr+'"')
     str1 = today_str+' * \"Bought '+shares_to_buy+' '+sym+' @ '+price+'  '+order+'  '+lotstr+'\"\n'
     #print (str1)
-    str2 = '  '+asset_str+sym+'    '+shares_to_buy+' '+sym+' {'+price+' '+currency+', '+today_str+', "'+lot+'"}\n'
+    str2 = '  '+asset_str+sym+'    '+shares_to_buy+' '+sym+' {'+price_str+' '+currency+', '+today_str+', "'+lot+'"}\n'
     #print (str2)
     str3 = '  '+mm_str+'    '+amt_val+' '+currency+"\n\n"
     #print (str3)
@@ -467,8 +469,8 @@ def sell_shares(list, pos, sym, shares_to_sell, price, currency, sregfee,
         lotstr = '(LOT '+lot+')'
 
         lot_date_str = '{:%Y-%m-%d}'.format(lot_date)
+        print (' "Sold', sell_these, sym, '@', price, "RegFee", this_regfee, order, lotstr+'"')
         str0 = stoday_str+' * \"Sold '+str(sell_these)+' '+sym+' @ '+str(price)+' RegFee '+newmoneyfmt(this_regfee)+'  '+order+'  '+lotstr+'\"\n'
-        #print ('"Sold', sell_these, sym, '@', price, "RegFee", this_regfee, order, lotstr+'"')
         #print (str0)
         str1 = '  basis: "'+newmoneyfmt(basis_val)+'" \n'
         #print (str1)
@@ -495,6 +497,74 @@ def sell_shares(list, pos, sym, shares_to_sell, price, currency, sregfee,
         number_of_transactions += 1
 
     return number_of_transactions
+
+
+# Split shares
+def split_shares(list, pos, sym, factor1, factor2, currency, lotorder, xtoday, asset_str, tmpfile):
+    """Split shares using the factors supplied in order.
+    The only error is if the shares do not exist.
+    """
+
+    find_pos = pos
+    end = len(list) - 1
+    x_sym = list[find_pos][3]
+    lot_count = 1
+    total_shares = list[find_pos][2]
+    this_lot_shares = list[find_pos][2]
+    while ((find_pos < end) and (x_sym == list[find_pos+1][3])):
+        lot_count += 1
+        find_pos += 1
+        total_shares += list[find_pos][2]
+    finish = find_pos
+
+    #print ("Pos : ", pos)
+    #print ("Finish : ", finish)
+    #print ("Lot Count : ", lot_count)
+    #print ("Total Shares : ", total_shares)
+
+    if (lot_count == 0):
+        print ("Missing Shares/Lots of Symbol : ", sym, " to Split")
+        return 0
+
+    xtoday_str = '{:%Y-%m-%d}'.format(xtoday)
+    print (' "Split', sym, factor1, 'FOR', factor2, lotorder+'"')
+    str0 = xtoday_str+' * \"Split '+sym+' '+str(factor1)+' FOR '+str(factor2)+'  '+lotorder+'\"'
+    #print (str0)
+    print (str0, file=tmpfile)
+
+    split_pos = pos
+    split_count = 0
+    while ((split_count < lot_count) and (split_pos <= finish)):
+        #print ("Split Pos : ", split_pos)
+        #print ("\n\n", split_pos, list[split_pos])
+        lot_shares = list[split_pos][2]
+        lot_date = list[split_pos][6]
+        #print ("Lot_Shares  :", lot_shares)
+        basis_price = list[split_pos][4]
+        #print ("Basis Price : ", basis_price)
+        basis_val = basis_price * lot_shares
+        #print (" Basis Val  : ", newmoneyfmt(basis_val))
+
+        sale_value = lot_shares * basis_price
+        #print (" Sale Value : ", sale_value, "\n")
+        lot = list[split_pos][7]
+        lotstr = '(LOT '+lot+')'
+
+        share_factor = factor1 / factor2
+        value_factor = factor2 / factor1
+
+        lot_date_str = '{:%Y-%m-%d}'.format(lot_date)
+        str1 = '  '+asset_str+sym+'    '+str(lot_shares * Decimal(-1))+' '+sym+' {'+str(basis_price)+' '+currency+', '+lot_date_str+', "'+lot+'"}\n'
+        #print (str1)
+        str2 = '  '+asset_str+sym+'    '+str(lot_shares * share_factor)+' '+sym+' {'+newmoneyfmt(basis_price * value_factor)+' '+currency+', '+lot_date_str+', "'+lot+'"}'
+        #print (str2)
+        print (str1, str2, file=tmpfile)
+
+        split_count += 1
+        #print (" lpos : ", split_pos, "  Split : ", lot_shares)
+        split_pos += 1
+
+    return lot_count
 
 
 def main():
@@ -725,7 +795,7 @@ def main():
         #print ("\nTotal : ", newmoneyfmt(total))
     
         # Buy, Sell, Split or Done
-        print ('\n\n(B)Buy, (S)Sell, (X)Split or (D)one\nEnter: \"B <num> <sym> <price>\" or \"S <num> <sym> <price> <regfee>\" or \"X <sym> <anum> FOR <bnum> or \"D\"\n')
+        print ('\n\n(B)Buy, (S)Sell, (X)Split or (D)one\nEnter: \"B <num> <sym> <price>\" or \"S <num> <sym> <price> [<regfee>]\" or \"X <sym> <anum> FOR <bnum>\" or \"D\"\n')
         linein = input().upper()
         spl = linein.split()
         #print (spl)
@@ -788,15 +858,19 @@ def main():
                 # Sell
                 if command in ['S']:
 
-                    if (len(spl) != 5):
-                        print ("\n\nNeed Sells to look like S <num> <sym> <price> <regfee>.")
+                    if (len(spl) not in [4,5]):
+                        print ("\n\nNeed Sells to look like S <num> <sym> <price> [<regfee>].")
+          
                         tot_trans = 0
                         continue
+                    elif (len(spl) == 4):
+                        regfee = Decimal(0)
+                    else:
+                        regfee = Decimal(spl[4])
 
                     num = Decimal(spl[1])
                     sym = spl[2]
                     price = Decimal(spl[3])
-                    regfee = Decimal(spl[4])
                     amt_val = newmoneyfmt(price * num)
                     #print ("Amt : ", amt_val)
 
@@ -804,10 +878,10 @@ def main():
 
                 # Split
                 elif command == 'X' and len(spl) == 5:
-                    print ('\"Split', sym, num, 'FOR', splfor+'"')
-                    print ('   Not written yet...')
-                    tot_trans = 0
-
+                    sym = spl[1]
+                    num = Decimal(spl[2])
+                    splfor = Decimal(spl[4])
+                    tot_trans = split_shares (slist, z, sym, num, splfor, main_currency, lotorder, today, asset_str, tmp_bcgtfile)
                 else:
                     print ("Missing something on Split?", spl)
                     tot_trans = 0
