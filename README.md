@@ -158,7 +158,7 @@ The commands entry prompt now looks like:
 
 <pre>
 (B)Buy, (S)Sell, (X)Split or (D)one
-Enter: B <num> <sym> <price> [[-b "backdate" -t tag]|[-t tag]] or S <num> <sym> <price> [<regfee>] [-b "backdate"] or X <sym> <anum> FOR <bnum> [-b "backdate"] or D
+Enter: B num sym price [[-b "backdate" -t tag]|[-t tag]] or S num sym price [regfee] [-b "backdate"] or X sym anum FOR bnum [-b "backdate"] or D
 </pre>
 
 Backdate: The -b option lets you specify a day or use any phrase that dateparser.parse will recognise, so words like "yesterday", "today" or "tomorrow" will work along with phrases like "last monday" should also work.  Because the phrases can be more than one word you need to use matching quotes around them.  I'm not really sure how well this will work if used for future dates - at present I'm mostly using this option in case I've not put in a trade on a certain day and am getting caught up within a few days.
