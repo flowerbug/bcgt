@@ -12,9 +12,9 @@ License: "GNU GPLv2"
 My changes are copyright to flowerbug@anthive.com, but nothing I'm doing is very complicated.
 
 
-# Latest News For v2.3.2, Added Backdate and Tag Options
+# Latest News For v2.3.6, Added Backdate and Tag Options
 
-Please use the current version (v2.3.2) and report any issues that are not noted below.
+Please use the current version (v2.3.6) and report any issues that are not noted below.
 
 The -b "backdate" and -t tag options are useful for when you've missed a day or want to use the actual Buy execution time or an approximate time when the Buy happened.  More details are included below.
 
