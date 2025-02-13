@@ -27,6 +27,8 @@ from operator import itemgetter
 import argparse
 import csv
 import datetime
+import dateparser
+import time
 import os
 import re
 
@@ -354,22 +356,28 @@ def newmoneyfmt(value):
 
 
 # Buy shares
-def buy_shares(sym, shares_to_buy, price, currency,
+def buy_shares(sym, shares_to_buy, price, backdate, tag, currency,
     order, btoday, asset_str, mm_str, tmpfile):
     """Buy shares and tag this lot with the proper label.
     """
 
-    today_str = '{:%Y-%m-%d}'.format(btoday)
-    time_str = '{:%H%M%S}'.format(btoday)
-    lot = sym+'-'+today_str+'-'+time_str
+    if (backdate == None):
+        todayorbackdate_str = '{:%Y-%m-%d}'.format(btoday)
+    else:
+        todayorbackdate_str = '{:%Y-%m-%d}'.format(backdate)
+    if (tag == None):
+        timeortag_str = '{:%H%M%S}'.format(btoday)
+    else:
+        timeortag_str = tag
+    lot = sym+'-'+todayorbackdate_str+'-'+timeortag_str
     lotstr = '(LOT '+lot+')'
     amt_val = newmoneyfmt((Decimal(-1) * Decimal(price) * Decimal(shares_to_buy)))
     #print ("Amt : ", amt_val)
     price_str = newmoneyfmt(Decimal(price))
     print (' "Bought', shares_to_buy, sym, '@', price, order, lotstr+'"')
-    str1 = today_str+' * \"Bought '+shares_to_buy+' '+sym+' @ '+price+'  '+order+'  '+lotstr+'\"\n'
+    str1 = todayorbackdate_str+' * \"Bought '+shares_to_buy+' '+sym+' @ '+price+'  '+order+'  '+lotstr+'\"\n'
     #print (str1)
-    str2 = '  '+asset_str+sym+'    '+shares_to_buy+' '+sym+' {'+price_str+' '+currency+', '+today_str+', "'+lot+'"}\n'
+    str2 = '  '+asset_str+sym+'    '+shares_to_buy+' '+sym+' {'+price_str+' '+currency+', '+todayorbackdate_str+', "'+lot+'"}\n'
     #print (str2)
     str3 = '  '+mm_str+'    '+amt_val+' '+currency+"\n\n"
     #print (str3)
@@ -379,7 +387,7 @@ def buy_shares(sym, shares_to_buy, price, currency,
 
 
 # Sell shares
-def sell_shares(list, pos, sym, shares_to_sell, price, currency, sregfee,
+def sell_shares(list, pos, sym, shares_to_sell, price, backdate, currency, sregfee,
     order, stoday, asset_str, expenses_str, equity_fees_str, income_str, mm_str, tmpfile):
     """Sell shares where the order of lots is determined by how
     the list is sorted (LIFO is the default, FIFO is the other
@@ -464,13 +472,16 @@ def sell_shares(list, pos, sym, shares_to_sell, price, currency, sregfee,
         sale_value = sell_these * price
         #print (" Sale Value : ", sale_value, "\n")
         sale_pnl = (sale_value - basis_val - this_regfee) * Decimal(-1)
-        stoday_str = '{:%Y-%m-%d}'.format(stoday)
+        if (backdate == None):
+            todayorbackdate_str = '{:%Y-%m-%d}'.format(stoday)
+        else:
+            todayorbackdate_str = '{:%Y-%m-%d}'.format(backdate)
         lot = list[sell_pos][7]
         lotstr = '(LOT '+lot+')'
 
         lot_date_str = '{:%Y-%m-%d}'.format(lot_date)
         print (' "Sold', sell_these, sym, '@', price, "RegFee", this_regfee, order, lotstr+'"')
-        str0 = stoday_str+' * \"Sold '+str(sell_these)+' '+sym+' @ '+str(price)+' RegFee '+newmoneyfmt(this_regfee)+'  '+order+'  '+lotstr+'\"\n'
+        str0 = todayorbackdate_str+' * \"Sold '+str(sell_these)+' '+sym+' @ '+str(price)+' RegFee '+newmoneyfmt(this_regfee)+'  '+order+'  '+lotstr+'\"\n'
         #print (str0)
         str1 = '  basis: "'+newmoneyfmt(basis_val)+'" \n'
         #print (str1)
@@ -500,69 +511,81 @@ def sell_shares(list, pos, sym, shares_to_sell, price, currency, sregfee,
 
 
 # Split shares
-def split_shares(list, pos, sym, factor1, factor2, currency, lotorder, xtoday, asset_str, tmpfile):
+def split_shares(list, pos, sym, factor1, factor2, backdate, currency, xtoday, asset_str, tmpfile):
     """Split shares using the factors supplied in order.
-    The only error is if the shares do not exist.
+    The only error is if the shares do not exist.  The list should
+    be sorted by symbol and date ascending.
     """
 
+    #print (list)
+
+    if (backdate == None):
+        todayorbackdate_str = '{:%Y-%m-%d}'.format(xtoday)
+    else:
+        todayorbackdate_str = '{:%Y-%m-%d}'.format(backdate)
+
+    # find the end of the shares we need to split
     find_pos = pos
     end = len(list) - 1
     x_sym = list[find_pos][3]
-    lot_count = 1
-    total_shares = list[find_pos][2]
-    this_lot_shares = list[find_pos][2]
-    while ((find_pos < end) and (x_sym == list[find_pos+1][3])):
+    lot_count = 0
+    total_shares = 0
+    listdate_str = '{:%Y-%m-%d}'.format(list[find_pos][6])
+    #print(" S lstdate :", listdate_str, "  torbdate :", todayorbackdate_str)
+    while ((find_pos <= end) and (x_sym == list[find_pos][3])
+        and (listdate_str < todayorbackdate_str)):
+        total_shares += list[find_pos][2]
         lot_count += 1
         find_pos += 1
-        total_shares += list[find_pos][2]
-    finish = find_pos
+        #print(" F lstdate :", listdate_str, "  torbdate :", todayorbackdate_str)
+        if (find_pos > end):
+            break
+        else:
+            listdate_str = '{:%Y-%m-%d}'.format(list[find_pos][6])
 
     #print ("Pos : ", pos)
-    #print ("Finish : ", finish)
     #print ("Lot Count : ", lot_count)
     #print ("Total Shares : ", total_shares)
 
     if (lot_count == 0):
         print ("Missing Shares/Lots of Symbol : ", sym, " to Split")
-        return 0
+    else:
+        print (' "Split', sym, factor1, 'FOR', factor2, '"')
+        str0 = todayorbackdate_str+' * \"Split '+sym+' '+str(factor1)+' FOR '+str(factor2)+'\"'
+        #print (str0)
+        print (str0, file=tmpfile)
 
-    xtoday_str = '{:%Y-%m-%d}'.format(xtoday)
-    print (' "Split', sym, factor1, 'FOR', factor2, lotorder+'"')
-    str0 = xtoday_str+' * \"Split '+sym+' '+str(factor1)+' FOR '+str(factor2)+'  '+lotorder+'\"'
-    #print (str0)
-    print (str0, file=tmpfile)
+        split_pos = pos
+        split_count = 0
+        while (split_count < lot_count):
+            #print ("Split Pos : ", split_pos)
+            #print ("\n\n", split_pos, list[split_pos])
+            lot_shares = list[split_pos][2]
+            lot_date = list[split_pos][6]
+            #print ("Lot_Shares  :", lot_shares)
+            basis_price = list[split_pos][4]
+            #print ("Basis Price : ", basis_price)
+            basis_val = basis_price * lot_shares
+            #print (" Basis Val  : ", newmoneyfmt(basis_val))
 
-    split_pos = pos
-    split_count = 0
-    while ((split_count < lot_count) and (split_pos <= finish)):
-        #print ("Split Pos : ", split_pos)
-        #print ("\n\n", split_pos, list[split_pos])
-        lot_shares = list[split_pos][2]
-        lot_date = list[split_pos][6]
-        #print ("Lot_Shares  :", lot_shares)
-        basis_price = list[split_pos][4]
-        #print ("Basis Price : ", basis_price)
-        basis_val = basis_price * lot_shares
-        #print (" Basis Val  : ", newmoneyfmt(basis_val))
+            sale_value = lot_shares * basis_price
+            #print (" Sale Value : ", sale_value, "\n")
+            lot = list[split_pos][7]
+            lotstr = '(LOT '+lot+')'
 
-        sale_value = lot_shares * basis_price
-        #print (" Sale Value : ", sale_value, "\n")
-        lot = list[split_pos][7]
-        lotstr = '(LOT '+lot+')'
+            share_factor = factor1 / factor2
+            value_factor = factor2 / factor1
 
-        share_factor = factor1 / factor2
-        value_factor = factor2 / factor1
+            lot_date_str = '{:%Y-%m-%d}'.format(lot_date)
+            str1 = '  '+asset_str+sym+'    '+str(lot_shares * Decimal(-1))+' '+sym+' {'+str(basis_price)+' '+currency+', '+lot_date_str+', "'+lot+'"}\n'
+            #print (str1)
+            str2 = '  '+asset_str+sym+'    '+str(lot_shares * share_factor)+' '+sym+' {'+newmoneyfmt(basis_price * value_factor)+' '+currency+', '+lot_date_str+', "'+lot+'"}'
+            #print (str2)
+            print (str1, str2, file=tmpfile)
 
-        lot_date_str = '{:%Y-%m-%d}'.format(lot_date)
-        str1 = '  '+asset_str+sym+'    '+str(lot_shares * Decimal(-1))+' '+sym+' {'+str(basis_price)+' '+currency+', '+lot_date_str+', "'+lot+'"}\n'
-        #print (str1)
-        str2 = '  '+asset_str+sym+'    '+str(lot_shares * share_factor)+' '+sym+' {'+newmoneyfmt(basis_price * value_factor)+' '+currency+', '+lot_date_str+', "'+lot+'"}'
-        #print (str2)
-        print (str1, str2, file=tmpfile)
-
-        split_count += 1
-        #print (" lpos : ", split_pos, "  Split : ", lot_shares)
-        split_pos += 1
+            split_count += 1
+            #print (" lpos : ", split_pos, "  Split : ", lot_shares)
+            split_pos += 1
 
     return lot_count
 
@@ -643,7 +666,6 @@ def main():
 
     #
     # Local Configuration End
-
 
     # Keep going until done, reloading transactions each time if
     # something has changed or during the first run
@@ -764,12 +786,34 @@ def main():
             def __lt__(self, other):
                 return other.obj < self.obj
     
+        class regular:
+            def __init__(self, obj):
+                self.obj = obj
+    
+            def __eq__(self, other):
+                return other.obj == self.obj
+    
+            def __lt__(self, other):
+                return self.obj < other.obj
+    
     
         # the default is LIFO, but we can reverse it to FIFO instead
-        slist = small_table.rows
+        uslist = small_table.rows
         if (args.switch_lot_pref != True):
-            slist = sorted(slist, key=lambda y: (y[0].lower(), reversor('{:%Y-%m-%d}'.format(y[6])+y[7])))
-    
+            slist = sorted(uslist, key=lambda y: (y[0].lower(), reversor('{:%Y-%m-%d}'.format(y[6])+y[7])))
+        else:
+            slist = sorted(uslist, key=lambda y: (y[0].lower(), regular('{:%Y-%m-%d}'.format(y[6])+y[7])))
+
+        # we need a LIFO or FIFO list (for trades) and a for sure regular
+        #   by date list (for splits)
+        small_table = Table(joined_table.header, slist)
+        #print("\n\nLIFO or FIFO Table\n\n")
+        #print(small_table.rows)
+        regslist = sorted(uslist, key=lambda y: (y[0].lower(), regular('{:%Y-%m-%d}'.format(y[6])+y[7])))
+        reg_table = Table(joined_table.header, regslist)
+        #print("\n\nReg Table\n\n")
+        #print(reg_table.rows)
+
         #print (slist[0])
     
     
@@ -795,15 +839,36 @@ def main():
         #print ("\nTotal : ", newmoneyfmt(total))
     
         # Buy, Sell, Split or Done
-        print ('\n\n(B)Buy, (S)Sell, (X)Split or (D)one\nEnter: \"B <num> <sym> <price>\" or \"S <num> <sym> <price> [<regfee>]\" or \"X <sym> <anum> FOR <bnum>\" or \"D\"\n')
+        print ('\n\n(B)Buy, (S)Sell, (X)Split or (D)one\nEnter: \'B <num> <sym> <price> [[-b \"backdate\" -t tag]|[-t tag]]\' or \'S <num> <sym> <price> [<regfee>] [-b \"backdate\"]\' or \'X <sym> <anum> FOR <bnum> [-b \"backdate\"]\' or \'D\'\n')
         linein = input().upper()
+
         spl = linein.split()
         #print (spl)
-        #print (len(spl))
+
+        # very rudimentary handling of these two options
+        bstr = None
+        spl_b = linein.split("-B")
+        #print ("-b ", spl_b)
+        if (len(spl_b) > 1):
+           bstr = spl_b[1].lstrip()
+           #print (bstr)
+           match = re.search(r"""((?=["'])(?:"[^"\\]*(?:\\[\s\S][^"\\]*)*"|'[^'\\]*(?:\\[\s\S][^'\\]*)*')|\w+)""",bstr)
+           bstr = match.group(0)
+           bstr = bstr.strip('\'\"')
+           #print ("Match -B :", bstr)
+        tstr = None
+        spl_t = linein.split("-T")
+        #print ("-t ", spl_t)
+        if (len(spl_t) > 1):
+           tstr = spl_t[1].lstrip()
+           #print ("Match -T :", tstr)
+
+        #print ("Length spl :", len(spl))
     
         # we need some input
         if spl is None or spl == []:
-           print ("\n\nNeed correct input.")
+           print ("\n\nNeed correct input.\n\n")
+           time.sleep(3)
            tot_trans = 0
            continue
         else:
@@ -833,17 +898,27 @@ def main():
 
             # Buy
             if command in ['B']:
-                if (len(spl) != 4):
-                    print ("\n\nNeed Buys to look like B <num> <sym> <price>.")
+
+                backdate = None
+                tag = None
+
+                if (len(spl) < 4):
+                    print ("\n\nNeed Buys to look like B <num> <sym> <price> [[-b \"backdate\" -t tag]|[-t tag]]\n\n")
+                    time.sleep(4)
                     tot_trans = 0
-                    break
+                    continue
+
+                if (bstr):
+                    backdate = dateparser.parse(bstr)
+                if (tstr):
+                    tag = tstr
                 num = spl[1]
                 price = spl[3]
 
-                tot_trans = buy_shares (sym, num, price, main_currency, lotorder, today, asset_str, mm_str, tmp_bcgtfile)
+                tot_trans = buy_shares (sym, num, price, backdate, tag, main_currency, lotorder, today, asset_str, mm_str, tmp_bcgtfile)
 
-            # Sell or Split
-            elif command in ['S','X']:
+            # Sell
+            elif command in ['S']:
 
                 for z in (range(len(slist))):
                     if (slist[z][3] == sym):
@@ -855,36 +930,61 @@ def main():
                     tot_trans = 0
                     continue
 
-                # Sell
-                if command in ['S']:
+                backdate = None
+                regfee = Decimal(0)
 
-                    if (len(spl) not in [4,5]):
-                        print ("\n\nNeed Sells to look like S <num> <sym> <price> [<regfee>].")
-          
-                        tot_trans = 0
-                        continue
-                    elif (len(spl) == 4):
-                        regfee = Decimal(0)
-                    else:
-                        regfee = Decimal(spl[4])
-
-                    num = Decimal(spl[1])
-                    sym = spl[2]
-                    price = Decimal(spl[3])
-                    amt_val = newmoneyfmt(price * num)
-                    #print ("Amt : ", amt_val)
-
-                    tot_trans = sell_shares (slist, z, sym, num, price, main_currency, regfee, lotorder, today, asset_str, expenses_str, equity_fees_str, income_str, mm_str, tmp_bcgtfile)
-
-                # Split
-                elif command == 'X' and len(spl) == 5:
-                    sym = spl[1]
-                    num = Decimal(spl[2])
-                    splfor = Decimal(spl[4])
-                    tot_trans = split_shares (slist, z, sym, num, splfor, main_currency, lotorder, today, asset_str, tmp_bcgtfile)
-                else:
-                    print ("Missing something on Split?", spl)
+                if (len(spl) < 4):
+                    print ("\n\nNeed Sells to look like S <num> <sym> <price> [<regfee>] [-b \"backdate\"]\n\n")
+                    time.sleep(4)
                     tot_trans = 0
+                    continue
+
+                if (len(spl) == 5 or len(spl) > 6):
+                    regfee = Decimal(spl[4])
+                if (bstr is not None):
+                    backdate = dateparser.parse(bstr)
+
+                num = Decimal(spl[1])
+                sym = spl[2]
+                price = Decimal(spl[3])
+                amt_val = newmoneyfmt(price * num)
+                #print ("Amt : ", amt_val)
+
+                tot_trans = sell_shares (slist, z, sym, num, price, backdate, main_currency, regfee, lotorder, today, asset_str, expenses_str, equity_fees_str, income_str, mm_str, tmp_bcgtfile)
+
+            # Split
+            elif command == 'X':
+
+                # we have to use the small list in date order for splitting
+                smlist = reg_table.rows
+                for z in (range(len(smlist))):
+                    if (smlist[z][3] == sym):
+                        found = z
+                        break
+
+                if found == None:
+                    print ("\n\nCan't find", sym)
+                    tot_trans = 0
+                    continue
+
+                backdate = None
+
+                if (len(spl) < 5):
+                    print ("\n\nNeed Splits to look like X <sym> <anum> FOR <bnum> [-b \"backdate\"]\n\n")
+                    time.sleep(4)
+                    tot_trans = 0
+                    continue
+
+                if (bstr):
+                    backdate = dateparser.parse(bstr)
+
+                #print(smlist)
+
+                sym = spl[1]
+                num = Decimal(spl[2])
+                splfor = Decimal(spl[4])
+                tot_trans = split_shares (smlist, z, sym, num, splfor, backdate, main_currency, today, asset_str, tmp_bcgtfile)
+
 
         # post process any contents of tmp_bcgtfile to get bcgtfile
         #   if destination is supplied append the transactions there
@@ -912,7 +1012,8 @@ def main():
         elif command in ['D']:
            done = True
         else:
-           print ("What?")
+           print ("\n\nWhat?\n\n")
+           time.sleep(2)
            tot_trans = 0
 
 

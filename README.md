@@ -9,21 +9,14 @@ Bcgt is adapted from the export.py program referenced from beangrow which was av
 Copyright: "Copyright (C) 2018  Martin Blais"
 License: "GNU GPLv2"
 
-My changes are copyright to me flowerbug@anthive.com, but nothing I'm doing is very complicated.
+My changes are copyright to flowerbug@anthive.com, but nothing I'm doing is very complicated.
 
 
-# Latest News v2.2.0 - A Mistake in Previous Versions (v2.0.0 or Earlier)
+# Latest News For v2.3.2, Added Backdate and Tag Options
 
-  I was going through some transactions the other day and noticed I'd reversed Equity and Expenses amounts on sells. I normally have expenses positive amounts and so the amount must come from equity which then has to be negative.
+Please use the current version (v2.3.2) and report any issues that are not noted below.
 
-  I'm sorry, this was something I should have noticed earlier.  You will need to go back and fix transactions from before.
-
-  My version 2.0.0 also had mistakes so that is also now fixed.  Please update to at least v2.0.1.
-
-  Version 2.2.0 includes Split and a few other changes which are not breaking changes:
-
-- If you are entering a lot of sell transactions that do not have a fee you can leave the zero off the end and it will be entered for you as zero.  Do not be upset at seeing a negative zero in your transaction - it is a valid python Decimal value and I like having that there to remind me that the value should be negative if it is there at all.
-- The price per share basis amount was previously just being set to whatever was typed in, but I decided I wanted those amounts to at least look like dollars and cents, so now those amounts from a buy are at least specified to two decimal places even if you type in a whole number.
+The -b "backdate" and -t tag options are useful for when you've missed a day or want to use the actual Buy execution time or an approximate time when the Buy happened.  More details are included below.
 
 
 # Introduction and Rationale
@@ -118,9 +111,9 @@ If you sell more shares than are in the first lot available this program will ke
 
 # About Lot labels
 
-You can change it to whatever you like, but I use a combination of the stock symbol, the date and time down to the second.  If you need finer resolution than that you could add microseconds or a random string of some sort.
+You can change it to whatever you like, but I use a combination of the stock symbol, the date and time down to the second.  If you need finer resolution than that you could change the code to add microseconds or a string of some sort, but remember that the lot order is sorted by LIFO or FIFO.
 
-If you are generating Buy transactions around midnight the date of the transaction and the lot label will change.  Remember that the lot labels I am generating are reflecting the date and time that you are typing them in using this program, if you want the actual date and time of the transaction you would have to edit the output to change those values.  I'm usually entering my own transactions in pretty close to when I am making the trades so if I'm off it isn't by much.
+If you are generating Buy transactions around midnight the date of the transaction and the lot label will change.  If you want more control over the date and time for Buys use the -b "backdate" and -t tag options.
 
 
 # The Destination Path and File
@@ -154,19 +147,40 @@ I also set up virtual environments in python to run beancount so the different d
 Split now works.
 
 
+# When Selling the Fee Amount is Optional
+
+- If you are entering a lot of sell transactions that do not have a fee you can leave the zero amount off the end and it will be entered for you as zero.  Do not be upset at seeing a negative zero in your transaction - it is a valid python Decimal value and I like having that there to remind me that the value should be negative if it is there at all.
+
+
+# The Backdate and Tag Options
+
+The commands entry prompt now looks like:
+
+(B)Buy, (S)Sell, (X)Split or (D)one
+Enter: 'B <num> <sym> <price> [[-b "backdate" -t tag]|[-t tag]]' or 'S <num> <sym> <price> [<regfee>] [-b "backdate"]' or 'X <sym> <anum> FOR <bnum> [-b "backdate"]' or 'D'
+
+Backdate: The -b option lets you specify a day or use any phrase that dateparser.parse will recognise, so words like "yesterday", "today" or "tomorrow" will work along with phrases like "last monday" should also work.  Because the phrases can be more than one word you need to use matching quotes around them.  I'm not really sure how well this will work if used for future dates - at present I'm mostly using this option in case I've not put in a trade on a certain day and am getting caught up within a few days.
+
+Tag:  The -t option.  Along with -b you can use the -t option to specify the time (as one single item in HHMMSS format) but you can also make up your own tags to use instead of the time as long as it is a single item without any strange characters mixed in.  This value will be used as part of the label and sorted so you will need to be sure that you use it in a consistent manner with whatever lot selling setting you have on your account.  Using -t alone to specify the time is nice if you want to keep track of your trade execution time as some trading platforms do provide that information.
+
+
 # Notes, Errors And Breaking Changes
 
-I make everything upper case when typed in so I don't have to wonder what the input looks like.
+You should be using the most current version.
+
+If you are doing something strange test it out first to make sure you get what you expect - like for example some of the phrases I expect the date parser to know about are not recognized but quite a few are.  I've found that most of the phrases I'm using are "yesterday" or "last <day>" where <day> is the day of the week.
+
+Input is converted to upper case and error checking on the format is very simplistic.  Adding the -b and -t options on top of the optional fee amount meant I had to redo all the logic for command input parsing and I have not completely tested every possible combination of dates and time and the various phrases that the date parser will accept.
+
+Also, I did notice that there is some strange things going on with transactions dated into the future so I personally avoid doing those until I figure out if it is a bug or just a normal feature of beancount.  At present I don't recommend doing transactions dated into the future and I also have not extensively tested transactions that are backdated and mixed in with other existing transactions.  Mostly I use backdate and tag if I've missed getting transactions entered on the day I made them or I want to record an actual time on the current day's transactions.
 
 If you accidentally type in something that isn't a number where it should be you will get some rather unhelpful error messages - I need to improve that.
+
+If you buy a stock today you can't split it until tomorrow as beancount doesn't use time yet for all transactions.  I don't think you can do this in real trading anyways since the stock does not settle the same day.  If you do buy a stock and want to split it your buy should be backdated using the -b option to the day when you really did buy it - then a split applied on the current day or backdated to the day after you bought it should work.
 
 I have not had to add any new commodities/symbols to the commodities.bc file, but at some point I hope to make that work automatically.  I usually edit prices.bc to add new symbols, but I also hope to get that to happen automatically.
 
 Currently no error checking is done on the destination location or file or permissions.
-
-Version 1.0.0 rescans all transactions each time a new transaction is generated and I no longer keep all of the transactions generated per run of the program in the out file (they are being appended to the latest file).
-
-Version 2.0.1 fixes mistakes I made (update to at least version 2.0.1).
 
 No errors or issues I'm aware of other than those I've noted here or up above.
 
