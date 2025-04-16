@@ -29,6 +29,7 @@ import csv
 import datetime
 import dateparser
 import time
+import readline
 import os
 import re
 
@@ -469,17 +470,17 @@ def sell_shares(list, pos, sym, shares_to_sell, price, backdate, currency, sregf
         basis_price = list[sell_pos][4]
         #print ("Basis Price : ", basis_price)
         basis_val = basis_price * sell_these
-        print ("\n Raw Basis Val  : ", basis_val)
-        print (" Basis Val  : ", newmoneyfmt(basis_val))
+        #print ("\n Raw Basis Val  : ", basis_val)
+        #print (" Basis Val  : ", newmoneyfmt(basis_val))
         #print ("\n Sale Price : ", price")
         raw_sale_value = sell_these * price
         sale_value = Decimal(raw_sale_value).quantize(Decimal('.01'), rounding=rounding_preference)
-        print ("\n Raw Sale Value : ", raw_sale_value)
-        print (" Sale Value : ", sale_value)
+        #print ("\n Raw Sale Value : ", raw_sale_value)
+        #print (" Sale Value : ", sale_value)
         raw_sale_pnl = (raw_sale_value - basis_val - this_regfee) * Decimal(-1)
         sale_pnl = Decimal((raw_sale_value - basis_val - this_regfee) * Decimal(-1)).quantize(Decimal('.01'), rounding=rounding_preference)
-        print ("\n Raw Sale_PnL : ", raw_sale_pnl)
-        print (" Sale_PnL : ", sale_pnl, "\n")
+        #print ("\n Raw Sale_PnL : ", raw_sale_pnl)
+        #print (" Sale_PnL : ", sale_pnl, "\n")
         
         if (backdate == None):
             todayorbackdate_str = '{:%Y-%m-%d}'.format(stoday)
