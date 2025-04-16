@@ -22,13 +22,14 @@ __copyright__ = "modified by flowerbug@anthive.com"
 __license__ = "GNU GPLv2"
 
 from typing import NamedTuple, Tuple, List, Set, Any, Dict
-from decimal import Decimal, getcontext, ROUND_HALF_EVEN
+from decimal import Decimal, getcontext, ROUND_HALF_EVEN, ROUND_HALF_UP
 from operator import itemgetter
 import argparse
 import csv
 import datetime
 import dateparser
 import time
+import readline
 import os
 import re
 
@@ -261,6 +262,9 @@ def do_args():
     parser.add_argument('-f', '--switch-lot-pref', action='store_true',
                         help=("Override the default lot sale selection order to FIFO"
                               "(default is LIFO)"))
+    parser.add_argument('-z', '--switch-round-pref', action='store_true',
+                        help=("Override the default rounding preference to ROUND_HALF_UP"
+                              "(default is ROUND_HALF_EVEN)"))
 
     for shortname, longname in [('-c', 'commodities'),
                                 ('-a', 'accounts'),
@@ -388,7 +392,7 @@ def buy_shares(sym, shares_to_buy, price, backdate, tag, currency,
 
 # Sell shares
 def sell_shares(list, pos, sym, shares_to_sell, price, backdate, currency, sregfee,
-    order, stoday, asset_str, expenses_str, equity_fees_str, income_str, mm_str, tmpfile):
+    order, stoday, rounding_preference, asset_str, expenses_str, equity_fees_str, income_str, mm_str, tmpfile):
     """Sell shares where the order of lots is determined by how
     the list is sorted (LIFO is the default, FIFO is the other
     option available).  The only error is if the shares do not
@@ -456,7 +460,7 @@ def sell_shares(list, pos, sym, shares_to_sell, price, backdate, currency, sregf
         lot_date = list[sell_pos][6]
         #print ("Lot_Shares  :", lot_shares)
         #print ("These_Shares  :", sell_these)
-        this_regfee = Decimal(regfee_per_share * sell_these).quantize(Decimal('.01'), rounding=ROUND_HALF_EVEN)
+        this_regfee = Decimal(regfee_per_share * sell_these).quantize(Decimal('.01'), rounding=rounding_preference)
         #print ("This Regfee : ", this_regfee)
         if (this_regfee > whats_left):
             #print (" Remaining fee ignored : ", this_regfee - whats_left)
@@ -466,12 +470,18 @@ def sell_shares(list, pos, sym, shares_to_sell, price, backdate, currency, sregf
         basis_price = list[sell_pos][4]
         #print ("Basis Price : ", basis_price)
         basis_val = basis_price * sell_these
+        #print ("\n Raw Basis Val  : ", basis_val)
         #print (" Basis Val  : ", newmoneyfmt(basis_val))
-        #print (" Sale Price : ", price, "\n")
-
-        sale_value = sell_these * price
-        #print (" Sale Value : ", sale_value, "\n")
-        sale_pnl = (sale_value - basis_val - this_regfee) * Decimal(-1)
+        #print ("\n Sale Price : ", price")
+        raw_sale_value = sell_these * price
+        sale_value = Decimal(raw_sale_value).quantize(Decimal('.01'), rounding=rounding_preference)
+        #print ("\n Raw Sale Value : ", raw_sale_value)
+        #print (" Sale Value : ", sale_value)
+        raw_sale_pnl = (raw_sale_value - basis_val - this_regfee) * Decimal(-1)
+        sale_pnl = Decimal((raw_sale_value - basis_val - this_regfee) * Decimal(-1)).quantize(Decimal('.01'), rounding=rounding_preference)
+        #print ("\n Raw Sale_PnL : ", raw_sale_pnl)
+        #print (" Sale_PnL : ", sale_pnl, "\n")
+        
         if (backdate == None):
             todayorbackdate_str = '{:%Y-%m-%d}'.format(stoday)
         else:
@@ -487,13 +497,13 @@ def sell_shares(list, pos, sym, shares_to_sell, price, backdate, currency, sregf
         #print (str1)
         str2 = '  '+asset_str+sym+'    '+str(sell_these * Decimal(-1))+' '+sym+' {'+str(basis_price)+' '+currency+', '+lot_date_str+', "'+lot+'"} @ '+str(price)+' '+currency+'\n'
         #print (str2)
-        str3 = '  '+expenses_str+":"+sym+'    '+moneyfmt(this_regfee)+' '+currency+'\n'
+        str3 = '  '+expenses_str+":"+sym+'    '+str(this_regfee)+' '+currency+'\n'
         #print (str3)
-        str4 = '  '+equity_fees_str+'    '+moneyfmt(Decimal(-1) * this_regfee)+' '+currency+'\n'
+        str4 = '  '+equity_fees_str+'    '+str(Decimal(-1) * this_regfee)+' '+currency+'\n'
         #print (str4)
-        str5 = '  '+income_str+sym+'    '+moneyfmt(sale_pnl)+' '+currency+'\n'
+        str5 = '  '+income_str+sym+'    '+str(sale_pnl)+' '+currency+'\n'
         #print (str5)
-        str6 = '  '+mm_str+'    '+moneyfmt(sale_value - this_regfee)+' '+currency+"\n\n"
+        str6 = '  '+mm_str+'    '+str(sale_value - this_regfee)+' '+currency+"\n\n"
         #print (str6)
         print (str0, str1, str2, str3, str4, str5, str6, file=tmpfile)
 
@@ -636,6 +646,14 @@ def main():
     else:
         print ("Lots are Sold in FIFO order.\n")
         lotorder = 'FIFO'
+
+    # Rounding method preference selection -z will change ROUND_HALF_EVEN to ROUND_HALF_UP
+    if (args.switch_round_pref != True):
+        print ("Rounding preference is ROUND_HALF_EVEN.\n")
+        rounding_preference = ROUND_HALF_EVEN
+    else:
+        print ("Rounding preference is ROUND_HALF_UP.\n")
+        rounding_preference = ROUND_HALF_UP
 
     # destination of transactions, must always be set one way or another
     if args.destination is not None:
@@ -950,7 +968,7 @@ def main():
                 amt_val = newmoneyfmt(price * num)
                 #print ("Amt : ", amt_val)
 
-                tot_trans = sell_shares (slist, z, sym, num, price, backdate, main_currency, regfee, lotorder, today, asset_str, expenses_str, equity_fees_str, income_str, mm_str, tmp_bcgtfile)
+                tot_trans = sell_shares (slist, z, sym, num, price, backdate, main_currency, regfee, lotorder, today, rounding_preference, asset_str, expenses_str, equity_fees_str, income_str, mm_str, tmp_bcgtfile)
 
             # Split
             elif command == 'X':

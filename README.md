@@ -12,11 +12,11 @@ License: "GNU GPLv2"
 My changes are copyright to flowerbug@anthive.com, but nothing I'm doing is very complicated.
 
 
-# Latest News For v2.3.6, Added Backdate and Tag Options
+# News For v3.0.0, Fix for Rounding Error, Use of -z Option, add readline
 
-Please use the current version (v2.3.6) and report any issues that are not noted below.
+Please use at least version (v3.0.0) and report any issues that are not noted below.
 
-The -b "backdate" and -t tag options are useful for when you've missed a day or want to use the actual Buy execution time or an approximate time when the Buy happened.  More details are included below.
+The previous versions used the default ROUND_HALF_EVEN method in one place which could cause unbalanced beancount transactions.  My broker uses ROUND_HALF_UP and so to make that possible along with the existing default I've added the -z option which changes the rounding method to ROUND_HALF_UP.
 
 
 # Introduction and Rationale
@@ -42,7 +42,7 @@ When Done type in D.
 <pre>
 $ python bcgt.py --help ledger.bc
 
-usage: bcgt.py [-h] [-dest DESTINATION] [-C CURRENCY] [-s] [-f]
+usage: bcgt.py [-h] [-dest DESTINATION] [-C CURRENCY] [-s] [-f] [-z]
                [-c OUTPUT_COMMODITIES] [-a OUTPUT_ACCOUNTS] [-p OUTPUT_PRICES]
                [-r OUTPUT_RATES] [-m OUTPUT_POSTINGS] [-o OUTPUT]
                filename
@@ -87,6 +87,9 @@ options:
   -f, --switch-lot-pref
                         Override the default lot sale selection order to
                         FIFO(default is LIFO)
+  -z, --switch-round-pref
+                        Override the default rounding preference to
+                        ROUND_HALF_UP(default is ROUND_HALF_EVEN)
   -c OUTPUT_COMMODITIES, --output_commodities OUTPUT_COMMODITIES
                         CSV filename to write out the commodities table to.
   -a OUTPUT_ACCOUNTS, --output_accounts OUTPUT_ACCOUNTS
@@ -188,6 +191,8 @@ If you buy a stock today you can't split it until tomorrow as beancount doesn't 
 I have not had to add any new commodities/symbols to the commodities.bc file, but at some point I hope to make that work automatically.  I usually edit prices.bc to add new symbols, but I also hope to get that to happen automatically.
 
 Currently no error checking is done on the destination location or file or permissions.
+
+Rounding of transaction amounts is not what I would do, but account statements might.  My previous versions did generate unbalanced transactions in certain instances.  Versions 3.0.0 and above fix this issue along with adding the -z option to use a different rounding method.
 
 No errors or issues I'm aware of other than those I've noted here or up above.
 
