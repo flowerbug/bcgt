@@ -12,13 +12,11 @@ License: "GNU GPLv2"
 My changes are copyright to flowerbug@anthive.com, but nothing I'm doing is very complicated.
 
 
-# News For v3.0.0, Fix for Rounding Error, Use of -z Option
+# News For v3.0.0, Fix for Rounding Error, Use of -z Option, add readline
 
 Please use at least version (v3.0.0) and report any issues that are not noted below.
 
 The previous versions used the default ROUND_HALF_EVEN method in one place which could cause unbalanced beancount transactions.  My broker uses ROUND_HALF_UP and so to make that possible along with the existing default I've added the -z option which changes the rounding method to ROUND_HALF_UP.
-
-Along with these changes I also may have made the output of the default version slightly different and so until tested for a while I'd consider this a potential breaking change.
 
 
 # Introduction and Rationale
@@ -194,7 +192,7 @@ I have not had to add any new commodities/symbols to the commodities.bc file, bu
 
 Currently no error checking is done on the destination location or file or permissions.
 
-Rounding of transaction amounts is not what I would do, but account statements might.  My previous versions did generate unbalanced transactions in certain instances.  Versions 3.0.0 and above I hope will fix this issue along with adding the -z option to use a different rounding method.
+Rounding of transaction amounts is not what I would do, but account statements might.  My previous versions did generate unbalanced transactions in certain instances.  Versions 3.0.0 and above fix this issue along with adding the -z option to use a different rounding method.
 
 No errors or issues I'm aware of other than those I've noted here or up above.
 
